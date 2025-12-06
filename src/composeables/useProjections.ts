@@ -24,7 +24,6 @@ interface GenericGrowthInput {
   years: number;
   monthlyValue: number;      // +contribution, -withdrawal
   increase: number;          // raises OR inflation-adjustment of withdrawals
-  annualInflation: number;   // used only for inflation-adjusted dollars
 }
 
 export interface AnnualProjection {
@@ -41,8 +40,8 @@ export interface FullProjection {
 
 function getEndBalance(projections: AnnualProjection[]): number {
   return projections.length > 0
-  ? projections[projections.length - 1]?.endBalance ?? 0
-  : 0;
+    ? projections[projections.length - 1]?.endBalance ?? 0
+    : 0;
 }
 
 function generateGenericGrowthProjection({
@@ -52,7 +51,6 @@ function generateGenericGrowthProjection({
   years,
   monthlyValue,
   increase,
-  annualInflation,
 }: GenericGrowthInput): AnnualProjection[] {
 
   const results: AnnualProjection[] = [];
@@ -61,13 +59,9 @@ function generateGenericGrowthProjection({
 
   const annualRate = growthRate / 100;
   const increaseDecimal = increase / 100;
-  const annualInflationDecimal = annualInflation / 100;
 
   // Monthly flows → annual flows
   let annualFlow = monthlyValue * 12;
-
-  // Tracks total inflation accumulation
-  let cumulativeInflationFactor = 1;
 
   for (let year = 1; year <= years; year++) {
 
@@ -84,18 +78,11 @@ function generateGenericGrowthProjection({
 
     const endBalance = balance;
 
-    // Update cumulative inflation
-    cumulativeInflationFactor += annualInflationDecimal;
-
-    // Convert to today's dollars
-    const startBalanceInflAdj = startBalance / cumulativeInflationFactor;
-    const endBalanceInflAdj   = endBalance / cumulativeInflationFactor;
-
     results.push({
       year,
       stage,
-      startBalance: startBalanceInflAdj,
-      endBalance: endBalanceInflAdj,
+      startBalance: startBalance,
+      endBalance: endBalance,
     });
   }
 
@@ -112,39 +99,36 @@ export function prepareGrowthProjection({
     'raw': null, 'inflation-adjusted': null
   };
 
-  const expanded: any[] = [];
-
-  for (const stage of stages) {
-    for (let i = 1; i <= stage.years; i++) {
-      expanded.push({
-        stage: stage.name,
-        yearInStage: i,
-        growth: stage.growth,
-        monthlyValue: stage.monthlyValue,
-      });
-    }
-  }
-
-  (['raw', 'inflation-adjusted'] as (keyof FullProjection)[]).forEach((c) => {
-    let balance = currentBalance;
-    let projection: AnnualProjection[] = [];
-    stages.forEach((s) => {
-      const proj = generateGenericGrowthProjection({
-        stage: s.name,
-        currentBalance: balance,
-        growthRate: s.growth,
-        years: s.years,
-        monthlyValue: s.monthlyValue,
-        increase: annualRaises,
-        annualInflation: c === 'raw' ? 0 : annualInflation,
-      });
-
-      projection = [...projection, ...proj]
-      balance = getEndBalance(proj);
+  // Calculate raw projection
+  let balance = currentBalance;
+  let rawProjection: AnnualProjection[] = [];
+  stages.forEach((s) => {
+    const proj = generateGenericGrowthProjection({
+      stage: s.name,
+      currentBalance: balance,
+      growthRate: s.growth,
+      years: s.years,
+      monthlyValue: s.monthlyValue,
+      increase: annualRaises
     });
 
-    completeProjection[c] = projection;
+    rawProjection = [...rawProjection, ...proj]
+    balance = getEndBalance(proj);
   });
+
+  completeProjection['raw'] = rawProjection;
+
+  const inflAdjProjection = rawProjection.map((p, i) => {
+    const inflationFactor = 1 + (i * (annualInflation / 100));
+
+    return {
+      ...p,
+      startBalance: p.startBalance / inflationFactor,
+      endBalance: p.endBalance / inflationFactor
+    };
+  });
+
+  completeProjection['inflation-adjusted'] = inflAdjProjection;
 
   return completeProjection;
 }

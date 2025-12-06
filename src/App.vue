@@ -232,7 +232,7 @@ const finalNoGoYearsBalance = computed(() => futureProjectionResults.value.final
     <div>
       <label
       class="block mb-2 text-gray-700"
-      >Go-Go Years</label>
+      >Go-Go Withdrawal Rate</label>
       <input
       type="text"
       v-model.number="incomeReplacementGoGo"
@@ -242,7 +242,7 @@ const finalNoGoYearsBalance = computed(() => futureProjectionResults.value.final
     <div>
       <label
       class="block mb-2 text-gray-700"
-      >Slow-Go Years</label>
+      >Slow-Go Withdrawal Rate</label>
       <input
       type="text"
       v-model.number="incomeReplacementSlowGo"
@@ -252,10 +252,43 @@ const finalNoGoYearsBalance = computed(() => futureProjectionResults.value.final
     <div>
       <label
       class="block mb-2 text-gray-700"
-      >No-Go Years</label>
+      >No-Go Withdrawal Rate</label>
       <input
       type="text"
       v-model.number="incomeReplacementNoGo"
+      class="border border-gray-300 text-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+
+  <div class="flex space-x-6">
+    <div>
+      <label
+      class="block mb-2 text-gray-700"
+      >Go-Go Years</label>
+      <input
+      type="text"
+      v-model.number="yearsInGoGo"
+      class="border border-gray-300 text-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label
+      class="block mb-2 text-gray-700"
+      >Slow-Go Years</label>
+      <input
+      type="text"
+      v-model.number="yearsInSlowGo"
+      class="border border-gray-300 text-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label
+      class="block mb-2 text-gray-700"
+      >No-Go Years</label>
+      <input
+      type="text"
+      v-model.number="yearsInNoGo"
       class="border border-gray-300 text-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
@@ -340,6 +373,8 @@ const finalNoGoYearsBalance = computed(() => futureProjectionResults.value.final
 <div>
   <PlotFigure
     :options="{
+      width: 1000,
+      height: 400,
       marginLeft: 65,
       marks: [
         Plot.barY(projectionGraph, {x: 'age', y: 'balance', fill: 'stage'}),
