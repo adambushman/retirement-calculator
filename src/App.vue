@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import * as Plot from '@observablehq/plot';
-import PlotFigure from '@/components/PlotFigure.vue';
 import { format } from 'd3-format';
 
-import { ref, toRefs, computed } from 'vue';
+import PlotFigure from '@/components/PlotFigure.vue';
 import { prepareGrowthProjection } from '@/composeables/useProjections';
-
 import type { FullProjection } from '@/composeables/useProjections';
+
+import { ref, toRefs, computed } from 'vue';
+import Slider from '@/volt/Slider.vue';
+
+import SliderLabel from '@/components/SliderLabel.vue';
+
 
 const ageToday = ref<number>(30);
 const ageRetirement = ref<number>(65);
@@ -22,6 +26,7 @@ const growthRatePreRetirement = ref<number>(7.5);
 const growthRateIntraRetirement = ref<number>(4);
 const annualInflation = ref<number>(2.5);
 const inflationPerspective = ref<keyof FullProjection>("raw");
+const retirementBoundaries = ref<number[]>([75, 85]);
 
 const yearsUntilRetirement = computed(() => {
   return ageRetirement.value - ageToday.value;
@@ -30,10 +35,12 @@ const yearsInRetirement = computed(() => {
   return lifeExpectancy.value - ageRetirement.value;
 });
 const yearsInGoGo = computed(() => {
-  return 75 - (ageRetirement.value);
-})
+  const def = ageRetirement.value;
+  return (retirementBoundaries.value[0] ?? def) - def;
+});
 const yearsInSlowGo = computed(() => {
-  return 85 - yearsInGoGo.value - (ageRetirement.value);
+  const def = yearsInGoGo.value + (ageRetirement.value);
+  return (retirementBoundaries.value[1] ?? def) - def;
 })
 const yearsInNoGo = computed(() => {
   return yearsInRetirement.value - yearsInSlowGo.value - yearsInGoGo.value;
@@ -96,8 +103,6 @@ const futureProjection = computed(() => {
       monthlyValue: monthlyNoGoWithdrawal.value,
     },
   ];
-
-  console.log(stages);
 
   return prepareGrowthProjection({
     currentBalance: currentBalance.value,
@@ -262,6 +267,23 @@ const finalNoGoYearsBalance = computed(() => futureProjectionResults.value.final
   </div>
 
   <div class="flex space-x-6">
+    <div>
+      <label
+      class="block mb-2 text-gray-700"
+      >No-Go Withdrawal Rate</label>
+      <SliderLabel
+      :yearsInGoGo
+      :yearsInSlowGo
+      :yearsInNoGo
+      />
+      <Slider
+      v-model="retirementBoundaries"
+      class="w-60 mt-0"
+      range
+      :min="ageRetirement"
+      :max="lifeExpectancy"
+      ></Slider>
+    </div>
     <div>
       <label
       class="block mb-2 text-gray-700"
