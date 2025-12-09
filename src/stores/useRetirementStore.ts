@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { prepareGrowthProjection } from '@/composeables/useProjections';
 import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
 
@@ -18,10 +18,15 @@ export const useRetirementStore = defineStore("retirement", () => {
   const growthRatePreRetirement = ref<number>(7.5);
   const growthRateIntraRetirement = ref<number>(4);
   const annualInflation = ref<number>(2.5);
-  const inflationPerspective = ref<keyof FullProjection>("raw");
-  const retirementBoundaries = ref<number[]>([75, 85]);
+  const inflationAdjChoice = ref<boolean>(false);
+  const overrideRetirementBoundaries = ref<number[] | null>(null);
+
 
   // Computed properties
+  const inflationPerspective = computed(() => {
+    return inflationAdjChoice.value ? "inflation-adjusted" : "raw";
+  });
+
   const yearsUntilRetirement = computed(() =>
     ageRetirement.value - ageToday.value
   );
@@ -29,6 +34,27 @@ export const useRetirementStore = defineStore("retirement", () => {
   const yearsInRetirement = computed(
     () => lifeExpectancy.value - ageRetirement.value
   );
+
+  const retirementBoundaries = computed<number[]>({
+    get() {
+      if (overrideRetirementBoundaries.value) {
+        return overrideRetirementBoundaries.value;
+      }
+
+      // your default logic:
+      const baseYrs = (yearsInRetirement.value * 2.0) / 5.0;
+      console.log("baseYrs", baseYrs);
+
+      return [
+        Math.floor(baseYrs),
+        Math.floor(baseYrs) * 2
+      ].map((yr) => yr + ageRetirement.value);
+    },
+
+    set(newValue: number[]) {
+      overrideRetirementBoundaries.value = newValue;
+    }
+  });
 
   const yearsInGoGo = computed(() => {
     const def = ageRetirement.value;
@@ -173,6 +199,27 @@ export const useRetirementStore = defineStore("retirement", () => {
     () => futureProjectionResults.value.finalNoGoYearsBalance
   );
 
+  watch(
+    [yearsInRetirement, ageRetirement, lifeExpectancy],
+    () => {
+      if (!overrideRetirementBoundaries.value) return;
+
+      const [b1, b2] = overrideRetirementBoundaries.value;
+
+      const min = ageRetirement.value;
+      const max = lifeExpectancy.value;
+
+      const outOfRange = (b1 ?? 0) < min || (b2 ?? 0) > max;
+
+      if (outOfRange) {
+        console.log("Override boundaries invalid, resetting to defaults");
+        overrideRetirementBoundaries.value = null;
+      }
+    },
+    { deep: false }
+  );
+
+
   // Return all necessary state
   return {
     // Base values
@@ -189,9 +236,10 @@ export const useRetirementStore = defineStore("retirement", () => {
     growthRatePreRetirement,
     growthRateIntraRetirement,
     annualInflation,
-    inflationPerspective,
+    inflationAdjChoice,
 
     // Computed values
+    inflationPerspective,
     retirementBoundaries,
     yearsUntilRetirement,
     yearsInRetirement,
