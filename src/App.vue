@@ -9,10 +9,14 @@ const store = useRetirementStore();
 </script>
 
 <template>
-<div class="p-3 space-y-3">
-  <InputsDrawer />
+<div class="mx-auto max-w-7xl p-3">
+  <div class="space-y-6 md:flex md:space-x-6 md:space-y-0">
+    <InputsDrawer class="flex-1 md:min-w-120"/>
 
-  <ProjectionChart />
+    <div>
+      <ProjectionChart class="flex-1"/>
+    </div>
+  </div>
 
   <div>
     <h1>Pre-Retirement End Balance (Raw): {{ format("$,.2f")(store.finalPreRetirementBalance) }}</h1>
