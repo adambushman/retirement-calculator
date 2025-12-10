@@ -76,3 +76,8 @@
       --p-text-hover-muted-color: var(--p-surface-300);
   }
 }
+
+body {
+  color: var(--p-text-color);
+  background: var(--p-primary-contrast-color);
+}

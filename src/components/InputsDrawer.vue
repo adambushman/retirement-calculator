@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InputNumber from '@/volt/InputNumber.vue';
 import Slider from '@/volt/Slider.vue';
 import Accordion from '@/volt/Accordion.vue';
 import AccordionPanel from '@/volt/AccordionPanel.vue';
@@ -18,70 +19,81 @@ const store = useRetirementStore();
     <AccordionPanel value="0">
       <AccordionHeader>Earning & Saving</AccordionHeader>
       <AccordionContent>
-        <div class="flex flex-wrap space-x-6 space-y-6">
+        <div class="flex flex-wrap gap-4">
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="annual-income-input"
             >Annual Income Today</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.annualIncome"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="annual-income-input"
+            size="small"
+            prefix="$"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="annual-raises-input"
             >Annual Raises</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.annualRaises"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="annual-raises-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="annual-raises-input"
             >Your Age Today</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.ageToday"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="age-today-input"
+            size="small"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="current-balance-input"
             >Investment Balance Today</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.currentBalance"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="current-balance-input"
+            size="small"
+            prefix="$"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="savings-rate-input"
             >Savings/Contribution Rate</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.savingsRate"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="savings-rate-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="pre-retire-growth-input"
             >Growth Rate (Pre-Retirement)</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.growthRatePreRetirement"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="pre-retire-growth-input"
+            size="small"
+            suffix="%"
             />
           </div>
         </div>
@@ -91,43 +103,48 @@ const store = useRetirementStore();
     <AccordionPanel value="1">
       <AccordionHeader>Retirement Plan</AccordionHeader>
       <AccordionContent>
-        <div class="flex flex-wrap space-x-6 space-y-6">
+        <div class="flex flex-wrap gap-4">
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="retire-age-input"
             >Retirement Age</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.ageRetirement"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="retire-age-input"
+            size="small"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="life-expectancy-input"
             >Life Expectancy</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.lifeExpectancy"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="life-expectancy-input"
+            size="small"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="intra-retire-growth-input"
             >Growth Rate (Intra-Retirement)</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.growthRateIntraRetirement"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="intra-retire-growth-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="retire-stages-input"
             >Retirement Stage Length (Yrs)</label>
             <SliderLabel
             :yearsInGoGo="store.yearsInGoGo"
@@ -136,7 +153,8 @@ const store = useRetirementStore();
             />
             <Slider
             v-model="store.retirementBoundaries"
-            class="w-60 mt-0"
+            class="w-50 mt-0"
+            inputId="retire-stages-input"
             range
             :min="store.ageRetirement"
             :max="store.lifeExpectancy"
@@ -145,34 +163,40 @@ const store = useRetirementStore();
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="gogo-withdrawal-rate-input"
             >Go-Go Withdrawal Rate</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.incomeReplacementGoGo"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="gogo-withdrawal-rate-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="slowgo-withdrawal-rate-input"
             >Slow-Go Withdrawal Rate</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.incomeReplacementSlowGo"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="slowgo-withdrawal-rate-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="nogo-withdrawal-rate-input"
             >No-Go Withdrawal Rate</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.incomeReplacementNoGo"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="nogo-withdrawal-rate-input"
+            size="small"
+            suffix="%"
             />
           </div>
         </div>
@@ -185,12 +209,14 @@ const store = useRetirementStore();
         <div class="flex flex-wrap space-x-6 space-y-6">
           <div>
             <label
-            class="block mb-2 text-gray-400"
+            class="block text-sm mb-2 text-gray-400"
+            for="annual-inflation-input"
             >Annual Inflation</label>
-            <input
-            type="text"
+            <InputNumber
             v-model.number="store.annualInflation"
-            class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            inputId="annual-inflation-input"
+            size="small"
+            suffix="%"
             />
           </div>
 
