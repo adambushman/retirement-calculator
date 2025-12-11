@@ -5,16 +5,16 @@ import type { AnnualProjection, FullProjection } from '@/composeables/useProject
 
 export const useRetirementStore = defineStore("retirement", () => {
   // Base reactive values
-  const ageToday = ref<number>(30);
-  const ageRetirement = ref<number>(65);
+  const ageToday = ref<number>(25);
+  const ageRetirement = ref<number>(60);
   const lifeExpectancy = ref<number>(90);
-  const annualIncome = ref<number>(187000);
+  const annualIncome = ref<number>(100000);
   const incomeReplacementGoGo = ref<number>(125);
   const incomeReplacementSlowGo = ref<number>(100);
   const incomeReplacementNoGo = ref<number>(75);
-  const currentBalance = ref<number>(140000);
+  const currentBalance = ref<number>(10000);
   const annualRaises = ref<number>(1);
-  const savingsRate = ref<number>(12);
+  const savingsRate = ref<number>(15);
   const growthRatePreRetirement = ref<number>(7.5);
   const growthRateIntraRetirement = ref<number>(4);
   const annualInflation = ref<number>(2.5);
@@ -43,7 +43,6 @@ export const useRetirementStore = defineStore("retirement", () => {
 
       // your default logic:
       const baseYrs = (yearsInRetirement.value * 2.0) / 5.0;
-      console.log("baseYrs", baseYrs);
 
       return [
         Math.floor(baseYrs),
@@ -169,34 +168,92 @@ export const useRetirementStore = defineStore("retirement", () => {
     if (!arr || arr.length === 0) {
       return {
         finalPreRetirementBalance: 0,
-        finalGoGoYearsBalance: 0,
-        finalSlowGoYearsBalance: 0,
-        finalNoGoYearsBalance: 0,
+        finalGoGoBalance: 0,
+        finalSlowGoBalance: 0,
+        finalNoGoBalance: 0,
+        totalPreRetirementFlow: 0,
+        totalPreRetirementGrowth: 0,
+        totalGoGoFlow: 0,
+        totalGoGoGrowth: 0,
+        totalSlowGoFlow: 0,
+        totalSlowGoGrowth: 0,
+        totalNoGoFlow: 0,
+        totalNoGoGrowth: 0,
       };
     }
 
-    const finalStage = (stageName: string) =>
+    const finalBalance = (stageName: string) =>
       arr.filter(a => a.stage === stageName).slice(-1)[0]?.endBalance ?? 0;
 
+    const totalFlow = (stageName: string) =>
+      arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0);
+
+    const totalGrowth = (stageName: string) =>
+      arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.totalGrowth ?? 0), 0);
+
     return {
-      finalPreRetirementBalance: finalStage("Pre-retirement"),
-      finalGoGoYearsBalance: finalStage("Go-Go Years"),
-      finalSlowGoYearsBalance: finalStage("Slow-Go Years"),
-      finalNoGoYearsBalance: finalStage("No-Go Years"),
+      finalPreRetirementBalance: finalBalance("Pre-retirement"),
+      totalPreRetirementFlow: totalFlow("Pre-retirement"),
+      totalPreRetirementGrowth: totalGrowth("Pre-retirement"),
+      finalGoGoBalance: finalBalance("Go-Go Years"),
+      totalGoGoFlow: totalFlow("Go-Go Years"),
+      totalGoGoGrowth: totalGrowth("Go-Go Years"),
+      finalSlowGoBalance: finalBalance("Slow-Go Years"),
+      totalSlowGoFlow: totalFlow("Slow-Go Years"),
+      totalSlowGoGrowth: totalGrowth("Slow-Go Years"),
+      finalNoGoBalance: finalBalance("No-Go Years"),
+      totalNoGoFlow: totalFlow("No-Go Years"),
+      totalNoGoGrowth: totalGrowth("No-Go Years"),
     };
   });
 
+  const avgMonthlyWithdrawal = computed(() => {
+    const arr = futureProjection.value?.[inflationPerspective.value];
+    if (!arr || arr.length === 0) {
+      return 0
+    }
+
+    const retirement = arr.filter(a => a.stage !== "Pre-retirement");
+    return retirement.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0) / retirement.length / 12;
+  });
+
   const finalPreRetirementBalance = computed(
-    () => futureProjectionResults.value.finalPreRetirementBalance
+    (): number => futureProjectionResults.value.finalPreRetirementBalance
   );
-  const finalGoGoYearsBalance = computed(
-    () => futureProjectionResults.value.finalGoGoYearsBalance
+  const finalGoGoBalance = computed(
+    (): number => futureProjectionResults.value.finalGoGoBalance
   );
-  const finalSlowGoYearsBalance = computed(
-    () => futureProjectionResults.value.finalSlowGoYearsBalance
+  const finalSlowGoBalance = computed(
+    (): number => futureProjectionResults.value.finalSlowGoBalance
   );
-  const finalNoGoYearsBalance = computed(
-    () => futureProjectionResults.value.finalNoGoYearsBalance
+  const finalNoGoBalance = computed(
+    (): number => futureProjectionResults.value.finalNoGoBalance
+  );
+
+  const totalPreRetirementFlow = computed(
+    (): number => futureProjectionResults.value.totalPreRetirementFlow
+  );
+  const totalGoGoFlow = computed(
+    (): number => futureProjectionResults.value.totalGoGoFlow
+  );
+  const totalSlowGoFlow = computed(
+    (): number => futureProjectionResults.value.totalSlowGoFlow
+  );
+  const totalNoGoFlow = computed(
+    (): number => futureProjectionResults.value.totalNoGoFlow
+  );
+
+  const totalPreRetirementGrowth = computed(
+    (): number => futureProjectionResults.value.totalPreRetirementGrowth
+  );
+  const totalGoGoGrowth = computed(
+    (): number => futureProjectionResults.value.totalGoGoGrowth
+  );
+  const totalSlowGoGrowth = computed(
+    (): number => futureProjectionResults.value.totalSlowGoGrowth
+  );
+  const totalNoGoGrowth = computed(
+    (): number => futureProjectionResults.value.totalNoGoGrowth
   );
 
   watch(
@@ -212,7 +269,6 @@ export const useRetirementStore = defineStore("retirement", () => {
       const outOfRange = (b1 ?? 0) < min || (b2 ?? 0) > max;
 
       if (outOfRange) {
-        console.log("Override boundaries invalid, resetting to defaults");
         overrideRetirementBoundaries.value = null;
       }
     },
@@ -250,10 +306,19 @@ export const useRetirementStore = defineStore("retirement", () => {
     firstMonthlyContribution,
     annualIncomeAtRetirement,
     projectionGraph,
+    avgMonthlyWithdrawal,
     futureProjectionResults,
     finalPreRetirementBalance,
-    finalGoGoYearsBalance,
-    finalSlowGoYearsBalance,
-    finalNoGoYearsBalance,
+    finalGoGoBalance,
+    finalSlowGoBalance,
+    finalNoGoBalance,
+    totalPreRetirementFlow,
+    totalGoGoFlow,
+    totalSlowGoFlow,
+    totalNoGoFlow,
+    totalPreRetirementGrowth,
+    totalGoGoGrowth,
+    totalSlowGoGrowth,
+    totalNoGoGrowth,
   };
 });

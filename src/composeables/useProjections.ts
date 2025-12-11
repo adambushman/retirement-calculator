@@ -12,11 +12,6 @@ interface GrowthFactors {
   stages: Stages[];
 }
 
-export interface GrowthResults {
-  startBalance: number;
-  endBalance: number;
-}
-
 interface GenericGrowthInput {
   stage: string;
   currentBalance: number;
@@ -31,6 +26,8 @@ export interface AnnualProjection {
   stage: string;
   startBalance: number;
   endBalance: number;
+  annualFlow: number;
+  totalGrowth: number;
 }
 
 export interface FullProjection {
@@ -83,6 +80,8 @@ function generateGenericGrowthProjection({
       stage,
       startBalance: startBalance,
       endBalance: endBalance,
+      annualFlow,
+      totalGrowth: endBalance - startBalance - annualFlow,
     });
   }
 
@@ -124,7 +123,9 @@ export function prepareGrowthProjection({
     return {
       ...p,
       startBalance: p.startBalance / inflationFactor,
-      endBalance: p.endBalance / inflationFactor
+      endBalance: p.endBalance / inflationFactor,
+      annualFlow: p.annualFlow / inflationFactor,
+      totalGrowth: p.totalGrowth / inflationFactor,
     };
   });
 

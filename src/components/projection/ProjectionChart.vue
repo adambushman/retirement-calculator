@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import * as Plot from '@observablehq/plot';
+import { computed } from 'vue';
+
 import Panel from '@/volt/Panel.vue';
 import ToggleSwitch from '@/volt/ToggleSwitch.vue';
 import PlotFigure from '@/components/projection/PlotFigure.vue';
@@ -7,6 +9,11 @@ import PlotFigure from '@/components/projection/PlotFigure.vue';
 import { useRetirementStore } from "@/stores/useRetirementStore";
 
 const store = useRetirementStore();
+
+const ageBin = computed(() => {
+  const ages = store.projectionGraph.map(y => y.age);
+  return ages.filter((a,i) => a % 10 === 0);
+})
 </script>
 
 <template>
@@ -20,6 +27,9 @@ const store = useRetirementStore();
       width: 1000,
       height: 400,
       marginLeft: 65,
+      y: { ticks: 5, tickFormat: '$,.1s', label: null },
+      x: { ticks: ageBin, label: null },
+      style: { fontSize: '20px' },
       marks: [
         Plot.barY(store.projectionGraph, {x: 'age', y: 'balance', fill: 'stage'}),
       ],
@@ -29,5 +39,7 @@ const store = useRetirementStore();
 </template>
 
 <style scoped>
-
+[aria-label="y-axis tick label"] text {
+  font-size: 20px;
+}
 </style>
