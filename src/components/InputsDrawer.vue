@@ -7,6 +7,7 @@ import AccordionHeader from '@/volt/AccordionHeader.vue';
 import AccordionContent from '@/volt/AccordionContent.vue';
 
 import SliderLabel from '@/components/SliderLabel.vue';
+import SectionHeader from '@/components/SectionHeader.vue';
 
 import { useRetirementStore } from "@/stores/useRetirementStore";
 const store = useRetirementStore();
@@ -14,15 +15,16 @@ const store = useRetirementStore();
 
 <template>
 
-<div class="card">
+<div>
+  <SectionHeader>Inputs</SectionHeader>
   <Accordion :value="['0']" multiple>
     <AccordionPanel value="0">
       <AccordionHeader>Earning & Saving</AccordionHeader>
       <AccordionContent>
-        <div class="flex flex-wrap gap-4">
+        <div class="flex flex-wrap gap-3">
           <div>
             <label
-            class="block text-sm mb-2 text-gray-400"
+            class="block text-sm mb-1 text-gray-400"
             for="annual-income-input"
             >Annual Income Today</label>
             <InputNumber

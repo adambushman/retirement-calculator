@@ -29,7 +29,7 @@ const stageDescription = {
   <div class="flex flex-col items-center space-y-3">
   <h3
   :class="stageClass[stage]"
-  class="text-md lg:text-md border border-2 ps-3 pe-6 py-1 rounded-lg relative"
+  class="text-sm lg:text-md border border-2 ps-3 pe-6 py-1 rounded-lg relative"
   >
     {{ stage }}
     <div class="absolute top-0 right-2" >

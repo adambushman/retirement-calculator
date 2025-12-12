@@ -2,7 +2,6 @@
 import * as Plot from '@observablehq/plot';
 import { computed } from 'vue';
 
-import Panel from '@/volt/Panel.vue';
 import ToggleSwitch from '@/volt/ToggleSwitch.vue';
 import PlotFigure from '@/components/projection/PlotFigure.vue';
 
@@ -17,29 +16,25 @@ const ageBin = computed(() => {
 </script>
 
 <template>
-<Panel>
-  <div class="flex justify-end space-x-2">
-    <span class="self-center text-gray-400">Adjust for Inflation</span>
-    <ToggleSwitch v-model="store.inflationAdjChoice" />
-  </div>
-  <PlotFigure
-    :options="{
-      width: 1000,
-      height: 400,
-      marginLeft: 65,
-      y: { ticks: 5, tickFormat: '$,.1s', label: null },
-      x: { ticks: ageBin, label: null },
-      style: { fontSize: '20px' },
-      marks: [
-        Plot.barY(store.projectionGraph, {x: 'age', y: 'balance', fill: 'stage'}),
-      ],
-    }"
-  />
-</Panel>
+<div class="flex justify-end space-x-2">
+  <span class="self-center text-gray-400">Adjust for Inflation</span>
+  <ToggleSwitch v-model="store.inflationAdjChoice" />
+</div>
+<PlotFigure
+  :options="{
+    width: 1000,
+    height: 400,
+    marginLeft: 70,
+    y: { ticks: 5, tickFormat: '$,.1s', label: null },
+    x: { ticks: ageBin, label: null },
+    style: { fontSize: '22px' },
+    marks: [
+      Plot.barY(store.projectionGraph, {x: 'age', y: 'balance', fill: 'stage'}),
+    ],
+  }"
+/>
 </template>
 
 <style scoped>
-[aria-label="y-axis tick label"] text {
-  font-size: 20px;
-}
+
 </style>
