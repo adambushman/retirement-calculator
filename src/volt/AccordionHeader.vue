@@ -6,7 +6,7 @@
             mergeProps: ptViewMerge
         }"
     >
-        <template #toggleicon="{ active }">
+        <template #toggleicon="{ active } = {} as any">
             <ChevronDownIcon v-if="active" />
             <ChevronUpIcon v-else />
         </template>
