@@ -13,6 +13,7 @@ const store = useRetirementStore();
       :finalBalance="store.finalPreRetirementBalance"
       :totalFlow="store.totalPreRetirementFlow"
       :totalGrowth="store.totalPreRetirementGrowth"
+      :years="[store.ageToday, store.ageRetirement - 1]"
     />
 
     <StageSummary
@@ -20,6 +21,7 @@ const store = useRetirementStore();
       :finalBalance="store.finalGoGoBalance"
       :totalFlow="store.totalGoGoFlow"
       :totalGrowth="store.totalGoGoGrowth"
+      :years="[store.ageRetirement, store.retirementBoundaries[0]! - 1]"
     />
 
     <StageSummary
@@ -27,6 +29,7 @@ const store = useRetirementStore();
       :finalBalance="store.finalSlowGoBalance"
       :totalFlow="store.totalSlowGoFlow"
       :totalGrowth="store.totalSlowGoGrowth"
+      :years="[store.retirementBoundaries[0]!, store.retirementBoundaries[1]! - 1]"
     />
 
     <StageSummary
@@ -34,6 +37,7 @@ const store = useRetirementStore();
       :finalBalance="store.finalNoGoBalance"
       :totalFlow="store.totalNoGoFlow"
       :totalGrowth="store.totalNoGoGrowth"
+      :years="[store.retirementBoundaries[1]!, store.lifeExpectancy]"
     />
   </div>
 </template>

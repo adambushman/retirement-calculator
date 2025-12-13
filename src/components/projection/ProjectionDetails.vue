@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import StageSummaryPanel from '@/components/stage-summary/StageSummaryPanel.vue';
 import ProjectionSummary from '@/components/projection/ProjectionSummary.vue';
-import Recommendations from '@/components/Recommendations.vue';
+import Recommendations from '@/components/projection/Recommendations.vue';
+import Assumptions from '@/components/projection/Assumptions.vue';
 
-import Panel from '@/volt/Panel.vue';
 import Tabs from '@/volt/Tabs.vue';
 import TabList from '@/volt/TabList.vue';
 import Tab from '@/volt/Tab.vue';
@@ -17,6 +17,7 @@ import TabPanel from '@/volt/TabPanel.vue';
         <Tab value="0">Summary</Tab>
         <Tab value="1">Stage Breakdown</Tab>
         <Tab value="2">Recommendations</Tab>
+        <Tab value="3">Assumptions</Tab>
     </TabList>
     <TabPanels class="mt-5">
       <TabPanel value="0">
@@ -32,6 +33,11 @@ import TabPanel from '@/volt/TabPanel.vue';
       <TabPanel value="2">
 
         <Recommendations />
+
+      </TabPanel>
+      <TabPanel value="3">
+
+        <Assumptions />
 
       </TabPanel>
     </TabPanels>

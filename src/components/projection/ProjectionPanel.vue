@@ -11,7 +11,7 @@ import Panel from '@/volt/Panel.vue';
 <div>
   <SectionHeader>Results</SectionHeader>
     <Panel>
-      <ProjectionChart class="flex-1"/>
+      <ProjectionChart />
 
       <ProjectionDetails />
     </Panel>

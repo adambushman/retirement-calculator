@@ -59,6 +59,8 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
     <template #question>What is not considered?</template>
     <template #answer>
       At the moment, this calculator focuses on retirement accounts (i.e. 401K, IRA, etc). It is not designed to account for social security, pensions, or income during retirement years.
+      <br><br>
+      Additionally, tax strategies are not considered. Contributions are considered before tax and income is assumed to be gross.
     </template>
   </QuestionAnswer>
 </div>

@@ -1,7 +1,11 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
+
+import { format } from 'd3-format';
+
 import { prepareGrowthProjection } from '@/composeables/useProjections';
 import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
+import { formatRange } from '@/composeables/useHelpers';
 
 export const useRetirementStore = defineStore("retirement", () => {
   // Base reactive values
@@ -15,7 +19,7 @@ export const useRetirementStore = defineStore("retirement", () => {
   const currentBalance = ref<number>(10000);
   const annualRaises = ref<number>(1);
   const savingsRate = ref<number>(15);
-  const growthRatePreRetirement = ref<number>(7.5);
+  const growthRatePreRetirement = ref<number>(8);
   const growthRateIntraRetirement = ref<number>(4);
   const annualInflation = ref<number>(2.5);
   const inflationAdjChoice = ref<boolean>(false);
@@ -123,30 +127,33 @@ export const useRetirementStore = defineStore("retirement", () => {
         growth: growthRatePreRetirement.value,
         years: yearsUntilRetirement.value,
         monthlyValue: firstMonthlyContribution.value,
+        annualIncrease: annualRaises.value
       },
       {
         name: "Go-Go Years",
         growth: growthRateIntraRetirement.value,
         years: yearsInGoGo.value,
         monthlyValue: monthlyGoGoWithdrawal.value,
+        annualIncrease: 0
       },
       {
         name: "Slow-Go Years",
         growth: growthRateIntraRetirement.value,
         years: yearsInSlowGo.value,
         monthlyValue: monthlySlowGoWithdrawal.value,
+        annualIncrease: 0
       },
       {
         name: "No-Go Years",
         growth: growthRateIntraRetirement.value,
         years: yearsInNoGo.value,
         monthlyValue: monthlyNoGoWithdrawal.value,
+        annualIncrease: 0
       },
     ];
 
     return prepareGrowthProjection({
       currentBalance: currentBalance.value,
-      annualRaises: annualRaises.value,
       annualInflation: annualInflation.value,
       stages,
     });
@@ -256,6 +263,70 @@ export const useRetirementStore = defineStore("retirement", () => {
     (): number => futureProjectionResults.value.totalNoGoGrowth
   );
 
+  const recommendations = computed(() => {
+    const recs_array: Array<string> = [];
+    const industry = {
+      savingsRate: [15, 25],
+      growthRatePreRetirement: [7, 10],
+      growthRateIntraRetirement: [3, 6],
+      annualIncome: 70000,
+      ageRetirement: [58, 67],
+      lifeExpectancy: [70, 85],
+      yearsInGoGo: [8, 14],
+    };
+
+    if(finalNoGoBalance.value < 0) {
+      // Recommendations when balance is negative
+
+      // Earning & savings approaches
+      if(savingsRate.value < industry.savingsRate[0]!)
+        recs_array.push(`Consider increasing your savings/contribution rate (${formatRange(industry.savingsRate, '', '%')})`);
+
+      if(growthRatePreRetirement.value < industry.growthRatePreRetirement[0]!)
+        recs_array.push(`Increase the pre-retirement growth rate to a more likely level (${formatRange(industry.growthRatePreRetirement, '', '%')})`);
+
+      if(annualIncome.value < industry.annualIncome)
+        recs_array.push(`Brainstorm avenues to increase your annual income closer to the US median (${format('$,.0f')(industry.annualIncome)})`);
+
+      // Retirement plan approaches
+      if(growthRateIntraRetirement.value < industry.growthRateIntraRetirement[0]!)
+        recs_array.push(`Increase the intra-retirement growth rate to a more reasonable range (${formatRange(industry.ageRetirement, '', '')})`);
+
+      if(ageRetirement.value < industry.ageRetirement[0]!)
+        recs_array.push(`Consider shifting the target retirement age back so you have more time to save (${formatRange(industry.ageRetirement, '', '')})`);
+
+      if(lifeExpectancy.value > industry.lifeExpectancy[1]!)
+        recs_array.push(`Re-think how many years you anticipate living (${formatRange(industry.lifeExpectancy, '', '')})`);
+
+      if(yearsInGoGo.value > industry.yearsInGoGo[1]!)
+        recs_array.push(`Adjust your plan for years in the "Go-Go" stage (${formatRange(industry.yearsInGoGo, '', '')})`);
+    } else if(finalNoGoBalance.value >= 50000) {
+      // Recommendations when balance is dramatically positive
+
+      // Earning & savings approaches
+      if(growthRatePreRetirement.value > industry.growthRatePreRetirement[1]!)
+        recs_array.push(`Decrease the pre-retirement growth rate to a more likely level (${formatRange(industry.growthRatePreRetirement, '', '%')})`);
+
+      if(savingsRate.value > industry.savingsRate[1]!)
+        recs_array.push(`Consider lowering your savings/contribution rate (${formatRange(industry.savingsRate, '', '%')})`);
+
+      // Retirement plan approaches
+      if(growthRateIntraRetirement.value > industry.growthRateIntraRetirement[1]!)
+        recs_array.push(`Reduce the intra-retirement growth rate to a more reasonable range (${formatRange(industry.ageRetirement, '', '')})`);
+
+      if(yearsInGoGo.value < industry.yearsInGoGo[0]!)
+        recs_array.push(`Consider increasing your plan for years in the "Go-Go" stage (${formatRange(industry.yearsInGoGo, '', '')})`);
+
+      if(lifeExpectancy.value < industry.lifeExpectancy[0]!)
+        recs_array.push(`You may want to place for a longer life expectancy (${formatRange(industry.lifeExpectancy, '', '')})`);
+
+      if(ageRetirement.value > industry.ageRetirement[1]!)
+        recs_array.push(`Consider moving up your target retirement age (${formatRange(industry.ageRetirement, '', '')})`);
+    }
+
+    return recs_array;
+  });
+
   watch(
     [yearsInRetirement, ageRetirement, lifeExpectancy],
     () => {
@@ -320,5 +391,6 @@ export const useRetirementStore = defineStore("retirement", () => {
     totalGoGoGrowth,
     totalSlowGoGrowth,
     totalNoGoGrowth,
+    recommendations,
   };
 });

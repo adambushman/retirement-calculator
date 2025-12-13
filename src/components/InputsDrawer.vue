@@ -17,7 +17,7 @@ const store = useRetirementStore();
 
 <div>
   <SectionHeader>Inputs</SectionHeader>
-  <Accordion :value="['0']" multiple>
+  <Accordion :value="['-1']" multiple>
     <AccordionPanel value="0">
       <AccordionHeader>Earning & Saving</AccordionHeader>
       <AccordionContent>
@@ -26,7 +26,7 @@ const store = useRetirementStore();
             <label
             class="block text-sm mb-1 text-gray-400"
             for="annual-income-input"
-            >Annual Income Today</label>
+            >Annual Income Today (Gross)</label>
             <InputNumber
             v-model.number="store.annualIncome"
             inputId="annual-income-input"
@@ -206,7 +206,7 @@ const store = useRetirementStore();
     </AccordionPanel>
 
     <AccordionPanel value="2">
-      <AccordionHeader>Misc Assumptions</AccordionHeader>
+      <AccordionHeader>Miscellaneous</AccordionHeader>
       <AccordionContent>
         <div class="flex flex-wrap space-x-6 space-y-6">
           <div>

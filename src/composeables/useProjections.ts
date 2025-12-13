@@ -3,11 +3,11 @@ interface Stages {
   growth: number;
   years: number;
   monthlyValue: number;
+  annualIncrease: number;
 }
 
 interface GrowthFactors {
   currentBalance: number;
-  annualRaises: number;
   annualInflation: number;
   stages: Stages[];
 }
@@ -90,7 +90,6 @@ function generateGenericGrowthProjection({
 
 export function prepareGrowthProjection({
   currentBalance,
-  annualRaises,
   annualInflation,
   stages,
 }: GrowthFactors): FullProjection {
@@ -108,7 +107,7 @@ export function prepareGrowthProjection({
       growthRate: s.growth,
       years: s.years,
       monthlyValue: s.monthlyValue,
-      increase: annualRaises
+      increase: s.annualIncrease
     });
 
     rawProjection = [...rawProjection, ...proj]

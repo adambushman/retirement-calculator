@@ -16,14 +16,14 @@ const ageBin = computed(() => {
 </script>
 
 <template>
-<div class="flex justify-end space-x-2">
+<div class="flex justify-end space-x-2 mb-2">
   <span class="self-center text-gray-400">Adjust for Inflation</span>
   <ToggleSwitch v-model="store.inflationAdjChoice" />
 </div>
 <PlotFigure
   :options="{
     width: 1000,
-    height: 400,
+    height: 500,
     marginLeft: 70,
     y: { ticks: 5, tickFormat: '$,.1s', label: null },
     x: { ticks: ageBin, label: null },
