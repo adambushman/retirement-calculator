@@ -2,6 +2,7 @@
 import InputsDrawer from '@/components/InputsDrawer.vue';
 import ProjectionPanel from '@/components/projection/ProjectionPanel.vue';
 import FAQ from '@/components/faq/FAQ.vue';
+
 </script>
 
 <template>
