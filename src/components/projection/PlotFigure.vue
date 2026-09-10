@@ -6,6 +6,10 @@ const props = defineProps<{
   options: any;
 }>();
 
+const emit = defineEmits<{
+  (e: 'render', el: HTMLElement | SVGElement): void;
+}>();
+
 const container = ref<HTMLElement | null>(null);
 let plot: HTMLElement | SVGElement | null = null;
 
@@ -20,6 +24,9 @@ function renderPlot() {
   // Create new plot
   plot = Plot.plot(props.options);
   container.value.appendChild(plot);
+
+  // Let the parent attach behaviour to the freshly rendered figure
+  emit('render', plot);
 }
 
 onMounted(renderPlot);

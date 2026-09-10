@@ -83,16 +83,21 @@ export const useRetirementStore = defineStore("retirement", () => {
     () => yearsInRetirement.value * annualInflation.value
   );
 
-  const totalRaises = computed(
-    () => yearsUntilRetirement.value * annualRaises.value
-  );
-
   const firstMonthlyContribution = computed(
     () => (annualIncome.value * (savingsRate.value / 100)) / 12
   );
 
   const annualIncomeAtRetirement = computed(
-    () => annualIncome.value * (1 + totalRaises.value / 100)
+    // Income in the final working year: compound the annual raise once per
+    // completed working year. Year 1 is worked at today's salary (no raise yet,
+    // matching the projection engine), so the exponent is one less than the
+    // number of years until retirement.
+    () =>
+      annualIncome.value *
+      Math.pow(
+        1 + annualRaises.value / 100,
+        Math.max(0, yearsUntilRetirement.value - 1)
+      )
   );
 
   const monthlyIncomeAtRetirement = computed(
@@ -221,6 +226,7 @@ export const useRetirementStore = defineStore("retirement", () => {
     }
 
     const retirement = arr.filter(a => a.stage !== "Pre-retirement");
+    if (retirement.length === 0) return 0;
     return retirement.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0) / retirement.length / 12;
   });
 
@@ -290,7 +296,7 @@ export const useRetirementStore = defineStore("retirement", () => {
 
       // Retirement plan approaches
       if(growthRateIntraRetirement.value < industry.growthRateIntraRetirement[0]!)
-        recs_array.push(`Increase the intra-retirement growth rate to a more reasonable range (${formatRange(industry.ageRetirement, '', '')})`);
+        recs_array.push(`Increase the intra-retirement growth rate to a more reasonable range (${formatRange(industry.growthRateIntraRetirement, '', '%')})`);
 
       if(ageRetirement.value < industry.ageRetirement[0]!)
         recs_array.push(`Consider shifting the target retirement age back so you have more time to save (${formatRange(industry.ageRetirement, '', '')})`);
@@ -312,7 +318,7 @@ export const useRetirementStore = defineStore("retirement", () => {
 
       // Retirement plan approaches
       if(growthRateIntraRetirement.value > industry.growthRateIntraRetirement[1]!)
-        recs_array.push(`Reduce the intra-retirement growth rate to a more reasonable range (${formatRange(industry.ageRetirement, '', '')})`);
+        recs_array.push(`Reduce the intra-retirement growth rate to a more reasonable range (${formatRange(industry.growthRateIntraRetirement, '', '%')})`);
 
       if(yearsInGoGo.value < industry.yearsInGoGo[0]!)
         recs_array.push(`Consider increasing your plan for years in the "Go-Go" stage (${formatRange(industry.yearsInGoGo, '', '')})`);

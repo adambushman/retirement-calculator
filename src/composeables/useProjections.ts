@@ -57,15 +57,13 @@ function generateGenericGrowthProjection({
   const annualRate = growthRate / 100;
   const increaseDecimal = increase / 100;
 
-  // Monthly flows → annual flows
+  // Monthly flows → annual flows. Year 1 uses this amount as-is; the increase
+  // (raises / withdrawal adjustment) is compounded from year 2 onward.
   let annualFlow = monthlyValue * 12;
 
   for (let year = 1; year <= years; year++) {
 
     const startBalance = balance;
-
-    // Flow adjustment: raise contributions OR inflation-adjust withdrawals
-    annualFlow *= (1 + increaseDecimal);
 
     // Apply annual contributions or withdrawals (can be positive OR negative)
     balance += annualFlow;
@@ -83,6 +81,9 @@ function generateGenericGrowthProjection({
       annualFlow,
       totalGrowth: endBalance - startBalance - annualFlow,
     });
+
+    // Flow adjustment for next year: raise contributions OR inflation-adjust withdrawals
+    annualFlow *= (1 + increaseDecimal);
   }
 
   return results;
@@ -111,13 +112,21 @@ export function prepareGrowthProjection({
     });
 
     rawProjection = [...rawProjection, ...proj]
-    balance = getEndBalance(proj);
+
+    // Only carry the balance forward when the stage actually ran; a zero-year
+    // stage produces no rows and must not reset the running balance to 0.
+    if (proj.length > 0) {
+      balance = getEndBalance(proj);
+    }
   });
 
   completeProjection['raw'] = rawProjection;
 
   const inflAdjProjection = rawProjection.map((p, i) => {
-    const inflationFactor = 1 + (i * (annualInflation / 100));
+    // Compound cumulative inflation to restate future dollars in today's dollars.
+    // Exponent `i` is the row's offset from today (row 0 = "today"), matching the
+    // basis the chart uses for its age labels.
+    const inflationFactor = Math.pow(1 + annualInflation / 100, i);
 
     return {
       ...p,

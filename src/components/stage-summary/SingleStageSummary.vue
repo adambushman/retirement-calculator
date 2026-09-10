@@ -7,6 +7,7 @@ const props = defineProps<{
   stage: 'Pre-Retirement' | 'Go-Go Years' | 'Slow-Go Years' | 'No-Go Years',
   finalBalance: number,
   totalFlow: number,
+  avgMonthlyFlow: number,
   totalGrowth: number,
   years: Array<number>
 }>();
@@ -57,6 +58,11 @@ const stageDescription = {
   <div class="text-center">
     <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(totalFlow) }}</h2>
     <p class="text-xs lg:text-sm text-gray-500">{{ totalFlow < 0 ? 'Withdrawals' : 'Contributions' }}</p>
+  </div>
+
+  <div class="text-center">
+    <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(avgMonthlyFlow) }}</h2>
+    <p class="text-xs lg:text-sm text-gray-500">Monthly Avg.</p>
   </div>
 
   <div class="text-center">
