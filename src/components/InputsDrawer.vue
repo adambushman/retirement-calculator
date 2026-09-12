@@ -96,6 +96,9 @@ const store = useRetirementStore();
             inputId="pre-retire-growth-input"
             size="small"
             suffix="%"
+            :min="0"
+            :max="12"
+            :step="0.25"
             />
           </div>
         </div>
@@ -140,6 +143,9 @@ const store = useRetirementStore();
             inputId="intra-retire-growth-input"
             size="small"
             suffix="%"
+            :min="0"
+            :max="12"
+            :step="0.25"
             />
           </div>
 
@@ -219,6 +225,9 @@ const store = useRetirementStore();
             inputId="annual-inflation-input"
             size="small"
             suffix="%"
+            :min="0"
+            :max="6"
+            :step="0.25"
             />
           </div>
 
