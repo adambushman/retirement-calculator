@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import PlusIcon from '@primevue/icons/plus';
 
 import Button from '@/volt/Button.vue';
 import SectionHeader from '@/components/SectionHeader.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
+import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
 
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 
@@ -19,9 +20,13 @@ function setExpanded(id: string, expanded: boolean) {
   else expandedIds.delete(id);
 }
 
+// The single shared Add/Edit modal — null means closed.
+const editingAccountId = ref<string | null>(null);
+
 function addAccount() {
   const id = portfolio.addAccount();
   expandedIds.add(id);
+  editingAccountId.value = id;
 }
 
 // First-ever visit: seed one ready-to-edit account so the app isn't an empty
@@ -56,7 +61,14 @@ if (seededId) expandedIds.add(seededId);
         :name="account.name"
         :collapsed="!expandedIds.has(account.id)"
         @update:collapsed="setExpanded(account.id, !$event)"
+        @edit="editingAccountId = $event"
       />
     </div>
+
+    <AccountFormModal
+      v-if="editingAccountId"
+      :accountId="editingAccountId"
+      @close="editingAccountId = null"
+    />
   </div>
 </template>

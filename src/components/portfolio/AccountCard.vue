@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount } from 'vue';
+import { ref, provide, onBeforeUnmount } from 'vue';
 import { format } from 'd3-format';
 import ChevronDownIcon from '@primevue/icons/chevrondown';
 import ChevronUpIcon from '@primevue/icons/chevronup';
@@ -7,7 +7,9 @@ import ChevronUpIcon from '@primevue/icons/chevronup';
 import Panel from '@/volt/Panel.vue';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
-import AccountWorkspace from '@/components/portfolio/AccountWorkspace.vue';
+import { AccountStoreKey } from '@/stores/accountStoreKey';
+import AccountValues from '@/components/portfolio/AccountValues.vue';
+import ProjectionPanel from '@/components/projection/ProjectionPanel.vue';
 
 const props = defineProps<{
   accountId: string;
@@ -17,11 +19,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:collapsed', value: boolean): void;
+  (e: 'edit', accountId: string): void;
 }>();
 
 const portfolio = usePortfolioStore();
-// Read-only here: full editing happens in AccountWorkspace once expanded.
 const store = useAccountStore(props.accountId);
+// Scope this account's store to AccountValues/ProjectionPanel and everything
+// under them, the same key AccountFormModal provides for InputsDrawer.
+provide(AccountStoreKey, store);
 
 const editingName = ref(false);
 const draftName = ref(props.name);
@@ -53,9 +58,7 @@ const menuRoot = ref<HTMLElement | null>(null);
 
 function onEdit() {
   menuOpen.value = false;
-  // For now "Edit" just expands the card to reveal the existing inputs; this
-  // is the hook point for a dedicated edit view later on.
-  emit('update:collapsed', false);
+  emit('edit', props.accountId);
 }
 
 function onDelete() {
@@ -151,6 +154,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       </span>
     </div>
 
-    <AccountWorkspace v-if="!collapsed" :accountId="accountId" />
+    <div v-if="!collapsed" class="space-y-6 lg:flex lg:space-x-6 lg:space-y-0">
+      <AccountValues class="flex-1 lg:min-w-120" />
+      <ProjectionPanel class="flex-2" />
+    </div>
   </Panel>
 </template>
