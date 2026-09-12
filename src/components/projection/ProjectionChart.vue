@@ -6,9 +6,10 @@ import { format } from 'd3-format';
 import ToggleSwitch from '@/volt/ToggleSwitch.vue';
 import PlotFigure from '@/components/projection/PlotFigure.vue';
 
-import { useRetirementStore } from "@/stores/useRetirementStore";
+import { inject } from 'vue';
+import { AccountStoreKey } from '@/stores/accountStoreKey';
 
-const store = useRetirementStore();
+const store = inject(AccountStoreKey)!;
 
 const dollars = format('$,.0f');
 

@@ -9,8 +9,9 @@ import AccordionContent from '@/volt/AccordionContent.vue';
 import SliderLabel from '@/components/SliderLabel.vue';
 import SectionHeader from '@/components/SectionHeader.vue';
 
-import { useRetirementStore } from "@/stores/useRetirementStore";
-const store = useRetirementStore();
+import { inject } from 'vue';
+import { AccountStoreKey } from '@/stores/accountStoreKey';
+const store = inject(AccountStoreKey)!;
 </script>
 
 <template>
