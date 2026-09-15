@@ -2,7 +2,7 @@
 import { computed, inject } from 'vue';
 import { format } from 'd3-format';
 
-import SectionHeader from '@/components/SectionHeader.vue';
+import Section from '@/components/Section.vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 
 const store = inject(AccountStoreKey)!;
@@ -16,78 +16,57 @@ const accountTypeLabels: Record<string, string> = {
   brokerage: 'Brokerage',
 };
 const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? store.accountType);
+
+const contributionRateLabel = computed(() =>
+  store.contributionMode === 'dollar'
+    ? `${dollars(store.contributionAmount)}/mo`
+    : `${percent(store.savingsRate)}%`
+);
+
+const accountDetailsRows = computed(() => [
+  { label: 'Account Type', value: accountTypeLabel.value },
+  { label: 'Owner', value: store.ownerName || 'Unassigned' },
+]);
+
+const earningSavingRows = computed(() => [
+  { label: 'Account Balance Today', value: dollars(store.currentBalance) },
+  { label: 'Savings/Contribution Rate', value: contributionRateLabel.value },
+  { label: 'Growth Rate (Pre-Retirement)', value: `${percent(store.growthRatePreRetirement)}%` },
+]);
+
+const retirementPlanRows = computed(() => [
+  { label: 'Withdrawal Start Age', value: String(store.withdrawalStartAge) },
+  { label: 'Growth Rate (Intra-Retirement)', value: `${percent(store.growthRateIntraRetirement)}%` },
+  {
+    label: 'Stage Length (Go/Slow/No-Go)',
+    value: `${store.yearsInGoGo} / ${store.yearsInSlowGo} / ${store.yearsInNoGo} yrs`,
+  },
+  { label: 'Go-Go Withdrawal Rate', value: `${percent(store.incomeReplacementGoGo)}%` },
+  { label: 'Slow-Go Withdrawal Rate', value: `${percent(store.incomeReplacementSlowGo)}%` },
+  { label: 'No-Go Withdrawal Rate', value: `${percent(store.incomeReplacementNoGo)}%` },
+]);
+
+const columns = computed(() => [
+  { title: 'Account Details', rows: accountDetailsRows.value },
+  { title: 'Earning & Saving', rows: earningSavingRows.value },
+  { title: 'Retirement Plan', rows: retirementPlanRows.value },
+]);
 </script>
 
 <template>
-  <div>
-    <SectionHeader>Inputs</SectionHeader>
-
-    <div class="space-y-5">
-      <div>
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Account Details</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-          <div>
-            <p class="text-sm text-gray-400">Account Type</p>
-            <p class="font-medium">{{ accountTypeLabel }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Owner</p>
-            <p class="font-medium">{{ store.ownerName || 'Unassigned' }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Earning & Saving</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-          <div>
-            <p class="text-sm text-gray-400">Account Balance Today</p>
-            <p class="font-medium">{{ dollars(store.currentBalance) }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Savings/Contribution Rate</p>
-            <p class="font-medium">
-              {{ store.contributionMode === 'dollar' ? `${dollars(store.contributionAmount)}/mo` : `${percent(store.savingsRate)}%` }}
-            </p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Growth Rate (Pre-Retirement)</p>
-            <p class="font-medium">{{ percent(store.growthRatePreRetirement) }}%</p>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Retirement Plan</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-          <div>
-            <p class="text-sm text-gray-400">Withdrawal Start Age</p>
-            <p class="font-medium">{{ store.withdrawalStartAge }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Growth Rate (Intra-Retirement)</p>
-            <p class="font-medium">{{ percent(store.growthRateIntraRetirement) }}%</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Stage Length (Go/Slow/No-Go)</p>
-            <p class="font-medium">
-              {{ store.yearsInGoGo }} / {{ store.yearsInSlowGo }} / {{ store.yearsInNoGo }} yrs
-            </p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Go-Go Withdrawal Rate</p>
-            <p class="font-medium">{{ percent(store.incomeReplacementGoGo) }}%</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Slow-Go Withdrawal Rate</p>
-            <p class="font-medium">{{ percent(store.incomeReplacementSlowGo) }}%</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">No-Go Withdrawal Rate</p>
-            <p class="font-medium">{{ percent(store.incomeReplacementNoGo) }}%</p>
-          </div>
-        </div>
+  <Section title="Inputs">
+    <div class="grid gap-6 sm:grid-cols-3">
+      <div v-for="column in columns" :key="column.title">
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">{{ column.title }}</h4>
+        <table class="w-full text-sm border-collapse">
+          <tbody>
+            <tr v-for="row in column.rows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
+              <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
+              <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
-  </div>
+  </Section>
 </template>

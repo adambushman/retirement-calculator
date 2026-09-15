@@ -7,7 +7,7 @@ import CheckIcon from '@primevue/icons/check';
 
 import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
-import SectionHeader from '@/components/SectionHeader.vue';
+import Section from '@/components/Section.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
@@ -67,9 +67,8 @@ function closeAccountModal(createdAccountId?: string) {
 
 <template>
   <div>
-    <div v-if="showFullView" class="flex items-center justify-between mb-4">
-      <SectionHeader>Accounts</SectionHeader>
-      <div class="flex items-center gap-2">
+    <Section v-if="showFullView" title="Portfolio" class="mb-6">
+      <template #actions>
         <SecondaryButton
           label="Portfolio Assumptions"
           aria-label="Edit portfolio assumptions"
@@ -79,24 +78,9 @@ function closeAccountModal(createdAccountId?: string) {
             <PencilIcon style="width: 14px; height: 14px" />
           </template>
         </SecondaryButton>
-        <SecondaryButton
-          label="Clear All"
-          aria-label="Clear all accounts"
-          @click="clearAll"
-        >
-          <template #icon>
-            <TrashIcon style="width: 14px; height: 14px" />
-          </template>
-        </SecondaryButton>
-        <Button rounded aria-label="Add account" @click="addAccount">
-          <template #icon>
-            <PlusIcon />
-          </template>
-        </Button>
-      </div>
-    </div>
-
-    <PortfolioSummary v-if="showFullView" />
+      </template>
+      <PortfolioSummary />
+    </Section>
 
     <div v-if="!showFullView" class="grid gap-4 sm:grid-cols-2">
       <div
@@ -151,17 +135,36 @@ function closeAccountModal(createdAccountId?: string) {
       </div>
     </div>
 
-    <div v-else class="space-y-4">
-      <AccountCard
-        v-for="account in portfolio.accounts"
-        :key="account.id"
-        :accountId="account.id"
-        :name="account.name"
-        :collapsed="!expandedIds.has(account.id)"
-        @update:collapsed="setExpanded(account.id, !$event)"
-        @edit="editAccount"
-      />
-    </div>
+    <Section v-else title="Accounts">
+      <template #actions>
+        <SecondaryButton
+          label="Clear All"
+          aria-label="Clear all accounts"
+          @click="clearAll"
+        >
+          <template #icon>
+            <TrashIcon style="width: 14px; height: 14px" />
+          </template>
+        </SecondaryButton>
+        <Button rounded aria-label="Add account" @click="addAccount">
+          <template #icon>
+            <PlusIcon />
+          </template>
+        </Button>
+      </template>
+
+      <div class="space-y-4">
+        <AccountCard
+          v-for="account in portfolio.accounts"
+          :key="account.id"
+          :accountId="account.id"
+          :name="account.name"
+          :collapsed="!expandedIds.has(account.id)"
+          @update:collapsed="setExpanded(account.id, !$event)"
+          @edit="editAccount"
+        />
+      </div>
+    </Section>
 
     <PortfolioAssumptionsModal v-if="showAssumptionsModal" @close="showAssumptionsModal = false" />
 
