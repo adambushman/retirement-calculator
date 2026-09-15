@@ -1,12 +1,10 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
 
-import { format } from 'd3-format';
-
-import { prepareGrowthProjection } from '@/composeables/useProjections';
-import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
-import { formatRange } from '@/composeables/useHelpers';
+import type { AnnualProjection } from '@/composeables/useProjections';
+import { computeAccountProjection } from '@/composeables/useAccountProjection';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
+import { STAGE_PRE_RETIREMENT, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
 
 // Pinia stores are normally singletons keyed by a fixed id. To model several
 // independent accounts with the exact same shape (inputs, projection engine,
@@ -30,15 +28,28 @@ function defineAccountStore(id: string, persist: boolean) {
   const annualIncome = computed(() => assumptions.annualIncome);
   const annualRaises = computed(() => assumptions.annualRaises);
   const lifeExpectancy = computed(() => assumptions.lifeExpectancy);
+  const retirementAge = computed(() => assumptions.retirementAge);
   const annualInflation = computed(() => assumptions.annualInflation);
+  // Bridge/Go/Slow/No-Go withdrawal rates and stage lengths are
+  // portfolio-wide too (edit via usePortfolioAssumptionsStore).
+  const incomeReplacementBridge = computed(() => assumptions.incomeReplacementBridge);
+  const incomeReplacementGoGo = computed(() => assumptions.incomeReplacementGoGo);
+  const incomeReplacementSlowGo = computed(() => assumptions.incomeReplacementSlowGo);
+  const incomeReplacementNoGo = computed(() => assumptions.incomeReplacementNoGo);
+  const retirementBoundaries = computed(() => assumptions.retirementBoundaries);
+  const yearsInGoGo = computed(() => assumptions.yearsInGoGo);
+  const yearsInSlowGo = computed(() => assumptions.yearsInSlowGo);
+  const yearsInNoGo = computed(() => assumptions.yearsInNoGo);
 
   // Base reactive values
   const accountType = ref<AccountType>('traditional');
   const ownerName = ref<string>('');
   const withdrawalStartAge = ref<number>(60);
-  const incomeReplacementGoGo = ref<number>(125);
-  const incomeReplacementSlowGo = ref<number>(100);
-  const incomeReplacementNoGo = ref<number>(75);
+  // How much of the portfolio's target income-replacement dollar amount (in
+  // whichever stage this account is eligible for) this account is
+  // responsible for withdrawing — see the redesign notes; a portfolio's
+  // accounts don't need to sum to 100 and nothing enforces that yet.
+  const withdrawalShare = ref<number>(100);
   const currentBalance = ref<number>(10000);
   // Savings/contribution rate can be expressed as a flat monthly dollar
   // amount or as a percent of (portfolio-level) annual income — see
@@ -50,7 +61,6 @@ function defineAccountStore(id: string, persist: boolean) {
   const growthRatePreRetirement = ref<number>(8);
   const growthRateIntraRetirement = ref<number>(4);
   const inflationAdjChoice = ref<boolean>(false);
-  const overrideRetirementBoundaries = ref<number[] | null>(null);
 
 
   // Computed properties
@@ -58,57 +68,23 @@ function defineAccountStore(id: string, persist: boolean) {
     return inflationAdjChoice.value ? "inflation-adjusted" : "raw";
   });
 
+  // How many years this account actually spends contributing: it stops at
+  // whichever comes first, its own withdrawal start age or the portfolio's
+  // Retirement Age (see computeAccountProjection's contributingCutoffAge).
   const yearsUntilRetirement = computed(() =>
-    withdrawalStartAge.value - ageToday.value
+    Math.min(withdrawalStartAge.value, retirementAge.value) - ageToday.value
   );
 
-  const yearsInRetirement = computed(
-    () => lifeExpectancy.value - withdrawalStartAge.value
-  );
-
-  const retirementBoundaries = computed<number[]>({
-    get() {
-      if (overrideRetirementBoundaries.value) {
-        return overrideRetirementBoundaries.value;
-      }
-
-      // your default logic:
-      const baseYrs = (yearsInRetirement.value * 2.0) / 5.0;
-
-      return [
-        Math.floor(baseYrs),
-        Math.floor(baseYrs) * 2
-      ].map((yr) => yr + withdrawalStartAge.value);
-    },
-
-    set(newValue: number[]) {
-      overrideRetirementBoundaries.value = newValue;
-    }
-  });
-
-  const yearsInGoGo = computed(() => {
-    const def = withdrawalStartAge.value;
-    return (retirementBoundaries.value[0] ?? def) - def;
-  });
-
-  const yearsInSlowGo = computed(() => {
-    const def = yearsInGoGo.value + withdrawalStartAge.value;
-    return (retirementBoundaries.value[1] ?? def) - def;
-  });
-
-  const yearsInNoGo = computed(
-    () => yearsInRetirement.value - yearsInSlowGo.value - yearsInGoGo.value
-  );
+  // Traditional/Roth accounts can't withdraw before 59; a taxable brokerage
+  // can be tapped any time from today; nothing can be later than life
+  // expectancy. See the watch below, which clamps the value back in range
+  // whenever account type or the portfolio ages change.
+  const withdrawalStartAgeBounds = computed(() => ({
+    min: accountType.value === 'brokerage' ? ageToday.value : 59,
+    max: lifeExpectancy.value,
+  }));
 
   const monthlyIncome = computed(() => annualIncome.value / 12);
-
-  const totalInflationPreRetirement = computed(
-    () => yearsUntilRetirement.value * annualInflation.value
-  );
-
-  const totalInflationIntraRetirement = computed(
-    () => yearsInRetirement.value * annualInflation.value
-  );
 
   const firstMonthlyContribution = computed(() =>
     contributionMode.value === 'dollar'
@@ -134,84 +110,33 @@ function defineAccountStore(id: string, persist: boolean) {
     contributionMode.value = mode;
   }
 
-  const annualIncomeAtRetirement = computed(
-    // Income in the final working year: compound the annual raise once per
-    // completed working year. Year 1 is worked at today's salary (no raise yet,
-    // matching the projection engine), so the exponent is one less than the
-    // number of years until retirement.
-    () =>
-      annualIncome.value *
-      Math.pow(
-        1 + annualRaises.value / 100,
-        Math.max(0, yearsUntilRetirement.value - 1)
-      )
-  );
-
-  const monthlyIncomeAtRetirement = computed(
-    () => annualIncomeAtRetirement.value / 12
-  );
-
-  const monthlyGoGoWithdrawal = computed(
-    () =>
-      (monthlyIncomeAtRetirement.value *
-        (incomeReplacementGoGo.value / 100)) *
-      -1
-  );
-
-  const monthlySlowGoWithdrawal = computed(
-    () =>
-      (monthlyIncomeAtRetirement.value *
-        (incomeReplacementSlowGo.value / 100)) *
-      -1
-  );
-
-  const monthlyNoGoWithdrawal = computed(
-    () =>
-      (monthlyIncomeAtRetirement.value *
-        (incomeReplacementNoGo.value / 100)) *
-      -1
-  );
-
-  const futureProjection = computed(() => {
-    const stages = [
-      {
-        name: "Pre-retirement",
-        growth: growthRatePreRetirement.value,
-        years: yearsUntilRetirement.value,
-        monthlyValue: firstMonthlyContribution.value,
-        // A flat-dollar contribution stays fixed; a percent-of-income
-        // contribution grows with income, i.e. with annual raises.
-        annualIncrease: contributionMode.value === 'percent' ? annualRaises.value : 0
-      },
-      {
-        name: "Go-Go Years",
-        growth: growthRateIntraRetirement.value,
-        years: yearsInGoGo.value,
-        monthlyValue: monthlyGoGoWithdrawal.value,
-        annualIncrease: 0
-      },
-      {
-        name: "Slow-Go Years",
-        growth: growthRateIntraRetirement.value,
-        years: yearsInSlowGo.value,
-        monthlyValue: monthlySlowGoWithdrawal.value,
-        annualIncrease: 0
-      },
-      {
-        name: "No-Go Years",
-        growth: growthRateIntraRetirement.value,
-        years: yearsInNoGo.value,
-        monthlyValue: monthlyNoGoWithdrawal.value,
-        annualIncrease: 0
-      },
-    ];
-
-    return prepareGrowthProjection({
+  // The shared, year-by-year timeline engine — see useAccountProjection.ts
+  // for how contributing/dormant/Bridge/Go-Go/Slow-Go/No-Go are determined
+  // per year from this account's own fields plus the portfolio assumptions.
+  const futureProjection = computed(() => computeAccountProjection(
+    {
       currentBalance: currentBalance.value,
+      growthRatePreRetirement: growthRatePreRetirement.value,
+      growthRateIntraRetirement: growthRateIntraRetirement.value,
+      contributionMode: contributionMode.value,
+      firstMonthlyContribution: firstMonthlyContribution.value,
+      withdrawalStartAge: withdrawalStartAge.value,
+      withdrawalShare: withdrawalShare.value,
+    },
+    {
+      ageToday: ageToday.value,
+      lifeExpectancy: lifeExpectancy.value,
+      retirementAge: retirementAge.value,
+      annualIncome: annualIncome.value,
+      annualRaises: annualRaises.value,
+      retirementBoundaries: retirementBoundaries.value,
+      incomeReplacementBridge: incomeReplacementBridge.value,
+      incomeReplacementGoGo: incomeReplacementGoGo.value,
+      incomeReplacementSlowGo: incomeReplacementSlowGo.value,
+      incomeReplacementNoGo: incomeReplacementNoGo.value,
       annualInflation: annualInflation.value,
-      stages,
-    });
-  });
+    }
+  ));
 
   const projectionGraph = computed(() => {
     const projectionData = futureProjection.value?.[inflationPerspective.value];
@@ -229,11 +154,14 @@ function defineAccountStore(id: string, persist: boolean) {
     if (!arr || arr.length === 0) {
       return {
         finalPreRetirementBalance: 0,
+        finalBridgeBalance: 0,
         finalGoGoBalance: 0,
         finalSlowGoBalance: 0,
         finalNoGoBalance: 0,
         totalPreRetirementFlow: 0,
         totalPreRetirementGrowth: 0,
+        totalBridgeFlow: 0,
+        totalBridgeGrowth: 0,
         totalGoGoFlow: 0,
         totalGoGoGrowth: 0,
         totalSlowGoFlow: 0,
@@ -253,18 +181,21 @@ function defineAccountStore(id: string, persist: boolean) {
       arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.totalGrowth ?? 0), 0);
 
     return {
-      finalPreRetirementBalance: finalBalance("Pre-retirement"),
-      totalPreRetirementFlow: totalFlow("Pre-retirement"),
-      totalPreRetirementGrowth: totalGrowth("Pre-retirement"),
-      finalGoGoBalance: finalBalance("Go-Go Years"),
-      totalGoGoFlow: totalFlow("Go-Go Years"),
-      totalGoGoGrowth: totalGrowth("Go-Go Years"),
-      finalSlowGoBalance: finalBalance("Slow-Go Years"),
-      totalSlowGoFlow: totalFlow("Slow-Go Years"),
-      totalSlowGoGrowth: totalGrowth("Slow-Go Years"),
-      finalNoGoBalance: finalBalance("No-Go Years"),
-      totalNoGoFlow: totalFlow("No-Go Years"),
-      totalNoGoGrowth: totalGrowth("No-Go Years"),
+      finalPreRetirementBalance: finalBalance(STAGE_PRE_RETIREMENT),
+      totalPreRetirementFlow: totalFlow(STAGE_PRE_RETIREMENT),
+      totalPreRetirementGrowth: totalGrowth(STAGE_PRE_RETIREMENT),
+      finalBridgeBalance: finalBalance(STAGE_BRIDGE),
+      totalBridgeFlow: totalFlow(STAGE_BRIDGE),
+      totalBridgeGrowth: totalGrowth(STAGE_BRIDGE),
+      finalGoGoBalance: finalBalance(STAGE_GO_GO),
+      totalGoGoFlow: totalFlow(STAGE_GO_GO),
+      totalGoGoGrowth: totalGrowth(STAGE_GO_GO),
+      finalSlowGoBalance: finalBalance(STAGE_SLOW_GO),
+      totalSlowGoFlow: totalFlow(STAGE_SLOW_GO),
+      totalSlowGoGrowth: totalGrowth(STAGE_SLOW_GO),
+      finalNoGoBalance: finalBalance(STAGE_NO_GO),
+      totalNoGoFlow: totalFlow(STAGE_NO_GO),
+      totalNoGoGrowth: totalGrowth(STAGE_NO_GO),
     };
   });
 
@@ -274,13 +205,16 @@ function defineAccountStore(id: string, persist: boolean) {
       return 0
     }
 
-    const retirement = arr.filter(a => a.stage !== "Pre-retirement");
+    const retirement = arr.filter(a => a.stage !== STAGE_PRE_RETIREMENT);
     if (retirement.length === 0) return 0;
     return retirement.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0) / retirement.length / 12;
   });
 
   const finalPreRetirementBalance = computed(
     (): number => futureProjectionResults.value.finalPreRetirementBalance
+  );
+  const finalBridgeBalance = computed(
+    (): number => futureProjectionResults.value.finalBridgeBalance
   );
   const finalGoGoBalance = computed(
     (): number => futureProjectionResults.value.finalGoGoBalance
@@ -295,6 +229,9 @@ function defineAccountStore(id: string, persist: boolean) {
   const totalPreRetirementFlow = computed(
     (): number => futureProjectionResults.value.totalPreRetirementFlow
   );
+  const totalBridgeFlow = computed(
+    (): number => futureProjectionResults.value.totalBridgeFlow
+  );
   const totalGoGoFlow = computed(
     (): number => futureProjectionResults.value.totalGoGoFlow
   );
@@ -308,6 +245,9 @@ function defineAccountStore(id: string, persist: boolean) {
   const totalPreRetirementGrowth = computed(
     (): number => futureProjectionResults.value.totalPreRetirementGrowth
   );
+  const totalBridgeGrowth = computed(
+    (): number => futureProjectionResults.value.totalBridgeGrowth
+  );
   const totalGoGoGrowth = computed(
     (): number => futureProjectionResults.value.totalGoGoGrowth
   );
@@ -318,88 +258,10 @@ function defineAccountStore(id: string, persist: boolean) {
     (): number => futureProjectionResults.value.totalNoGoGrowth
   );
 
-  const recommendations = computed(() => {
-    const recs_array: Array<string> = [];
-    const industry = {
-      savingsRate: [15, 25],
-      growthRatePreRetirement: [7, 10],
-      growthRateIntraRetirement: [3, 6],
-      annualIncome: 70000,
-      withdrawalStartAge: [58, 67],
-      lifeExpectancy: [70, 85],
-      yearsInGoGo: [8, 14],
-    };
-
-    if(finalNoGoBalance.value < 0) {
-      // Recommendations when balance is negative
-
-      // Earning & savings approaches
-      if(contributionMode.value === 'percent' && savingsRate.value < industry.savingsRate[0]!)
-        recs_array.push(`Consider increasing your savings/contribution rate (${formatRange(industry.savingsRate, '', '%')})`);
-
-      if(growthRatePreRetirement.value < industry.growthRatePreRetirement[0]!)
-        recs_array.push(`Increase the pre-retirement growth rate to a more likely level (${formatRange(industry.growthRatePreRetirement, '', '%')})`);
-
-      if(annualIncome.value < industry.annualIncome)
-        recs_array.push(`Brainstorm avenues to increase your annual income closer to the US median (${format('$,.0f')(industry.annualIncome)})`);
-
-      // Retirement plan approaches
-      if(growthRateIntraRetirement.value < industry.growthRateIntraRetirement[0]!)
-        recs_array.push(`Increase the intra-retirement growth rate to a more reasonable range (${formatRange(industry.growthRateIntraRetirement, '', '%')})`);
-
-      if(withdrawalStartAge.value < industry.withdrawalStartAge[0]!)
-        recs_array.push(`Consider shifting the target withdrawal start age back so you have more time to save (${formatRange(industry.withdrawalStartAge, '', '')})`);
-
-      if(lifeExpectancy.value > industry.lifeExpectancy[1]!)
-        recs_array.push(`Re-think how many years you anticipate living (${formatRange(industry.lifeExpectancy, '', '')})`);
-
-      if(yearsInGoGo.value > industry.yearsInGoGo[1]!)
-        recs_array.push(`Adjust your plan for years in the "Go-Go" stage (${formatRange(industry.yearsInGoGo, '', '')})`);
-    } else if(finalNoGoBalance.value >= 50000) {
-      // Recommendations when balance is dramatically positive
-
-      // Earning & savings approaches
-      if(growthRatePreRetirement.value > industry.growthRatePreRetirement[1]!)
-        recs_array.push(`Decrease the pre-retirement growth rate to a more likely level (${formatRange(industry.growthRatePreRetirement, '', '%')})`);
-
-      if(contributionMode.value === 'percent' && savingsRate.value > industry.savingsRate[1]!)
-        recs_array.push(`Consider lowering your savings/contribution rate (${formatRange(industry.savingsRate, '', '%')})`);
-
-      // Retirement plan approaches
-      if(growthRateIntraRetirement.value > industry.growthRateIntraRetirement[1]!)
-        recs_array.push(`Reduce the intra-retirement growth rate to a more reasonable range (${formatRange(industry.growthRateIntraRetirement, '', '%')})`);
-
-      if(yearsInGoGo.value < industry.yearsInGoGo[0]!)
-        recs_array.push(`Consider increasing your plan for years in the "Go-Go" stage (${formatRange(industry.yearsInGoGo, '', '')})`);
-
-      if(lifeExpectancy.value < industry.lifeExpectancy[0]!)
-        recs_array.push(`You may want to place for a longer life expectancy (${formatRange(industry.lifeExpectancy, '', '')})`);
-
-      if(withdrawalStartAge.value > industry.withdrawalStartAge[1]!)
-        recs_array.push(`Consider moving up your target withdrawal start age (${formatRange(industry.withdrawalStartAge, '', '')})`);
-    }
-
-    return recs_array;
+  watch(withdrawalStartAgeBounds, ({ min, max }) => {
+    if (withdrawalStartAge.value < min) withdrawalStartAge.value = min;
+    else if (withdrawalStartAge.value > max) withdrawalStartAge.value = max;
   });
-
-  watch(
-    [yearsInRetirement, withdrawalStartAge, lifeExpectancy],
-    () => {
-      if (!overrideRetirementBoundaries.value) return;
-
-      const [b1, b2] = overrideRetirementBoundaries.value;
-
-      const min = withdrawalStartAge.value;
-      const max = lifeExpectancy.value;
-
-      const outOfRange = (b1 ?? 0) < min || (b2 ?? 0) > max;
-
-      if (outOfRange) {
-        overrideRetirementBoundaries.value = null;
-      }
-    },
-    { deep: false }
-  );
 
 
   // Return all necessary state
@@ -410,15 +272,23 @@ function defineAccountStore(id: string, persist: boolean) {
     annualIncome,
     annualRaises,
     lifeExpectancy,
+    retirementAge,
     annualInflation,
+    incomeReplacementBridge,
+    incomeReplacementGoGo,
+    incomeReplacementSlowGo,
+    incomeReplacementNoGo,
+    retirementBoundaries,
+    yearsInGoGo,
+    yearsInSlowGo,
+    yearsInNoGo,
 
     // Account-level base values
     accountType,
     ownerName,
     withdrawalStartAge,
-    incomeReplacementGoGo,
-    incomeReplacementSlowGo,
-    incomeReplacementNoGo,
+    withdrawalStartAgeBounds,
+    withdrawalShare,
     currentBalance,
     contributionMode,
     savingsRate,
@@ -429,32 +299,28 @@ function defineAccountStore(id: string, persist: boolean) {
 
     // Computed values
     inflationPerspective,
-    retirementBoundaries,
     yearsUntilRetirement,
-    yearsInRetirement,
-    yearsInGoGo,
-    yearsInSlowGo,
-    yearsInNoGo,
     monthlyIncome,
     firstMonthlyContribution,
     setContributionMode,
-    annualIncomeAtRetirement,
     projectionGraph,
     avgMonthlyWithdrawal,
     futureProjectionResults,
     finalPreRetirementBalance,
+    finalBridgeBalance,
     finalGoGoBalance,
     finalSlowGoBalance,
     finalNoGoBalance,
     totalPreRetirementFlow,
+    totalBridgeFlow,
     totalGoGoFlow,
     totalSlowGoFlow,
     totalNoGoFlow,
     totalPreRetirementGrowth,
+    totalBridgeGrowth,
     totalGoGoGrowth,
     totalSlowGoGrowth,
     totalNoGoGrowth,
-    recommendations,
   };
   }, persist ? { persist: true } : {});
 }
@@ -486,17 +352,16 @@ export type AccountStoreInstance = ReturnType<typeof useAccountStore>;
 
 /**
  * Copies every account-level editable field from one account store to
- * another. Portfolio-level fields (ageToday, annualIncome, etc.) are read-only
- * aliases onto the single shared usePortfolioAssumptionsStore, so both source
- * and target already see the same values — nothing to copy there.
+ * another. Portfolio-level fields (ageToday, annualIncome, the withdrawal
+ * rates/stage lengths, etc.) are read-only aliases onto the single shared
+ * usePortfolioAssumptionsStore, so both source and target already see the
+ * same values — nothing to copy there.
  */
 export function copyAccountFields(source: AccountStoreInstance, target: AccountStoreInstance) {
   target.accountType = source.accountType;
   target.ownerName = source.ownerName;
   target.withdrawalStartAge = source.withdrawalStartAge;
-  target.incomeReplacementGoGo = source.incomeReplacementGoGo;
-  target.incomeReplacementSlowGo = source.incomeReplacementSlowGo;
-  target.incomeReplacementNoGo = source.incomeReplacementNoGo;
+  target.withdrawalShare = source.withdrawalShare;
   target.currentBalance = source.currentBalance;
   target.contributionMode = source.contributionMode;
   target.savingsRate = source.savingsRate;
@@ -504,5 +369,4 @@ export function copyAccountFields(source: AccountStoreInstance, target: AccountS
   target.growthRatePreRetirement = source.growthRatePreRetirement;
   target.growthRateIntraRetirement = source.growthRateIntraRetirement;
   target.inflationAdjChoice = source.inflationAdjChoice;
-  target.retirementBoundaries = [...source.retirementBoundaries];
 }

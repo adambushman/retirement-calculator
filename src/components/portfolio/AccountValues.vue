@@ -36,14 +36,8 @@ const earningSavingRows = computed(() => [
 
 const retirementPlanRows = computed(() => [
   { label: 'Withdrawal Start Age', value: String(store.withdrawalStartAge) },
+  { label: 'Withdrawal Share', value: `${percent(store.withdrawalShare)}%` },
   { label: 'Growth Rate (Intra-Retirement)', value: `${percent(store.growthRateIntraRetirement)}%` },
-  {
-    label: 'Stage Length (Go/Slow/No-Go)',
-    value: `${store.yearsInGoGo} / ${store.yearsInSlowGo} / ${store.yearsInNoGo} yrs`,
-  },
-  { label: 'Go-Go Withdrawal Rate', value: `${percent(store.incomeReplacementGoGo)}%` },
-  { label: 'Slow-Go Withdrawal Rate', value: `${percent(store.incomeReplacementSlowGo)}%` },
-  { label: 'No-Go Withdrawal Rate', value: `${percent(store.incomeReplacementNoGo)}%` },
 ]);
 
 const columns = computed(() => [

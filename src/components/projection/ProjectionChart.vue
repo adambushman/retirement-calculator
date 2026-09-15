@@ -8,6 +8,7 @@ import PlotFigure from '@/components/projection/PlotFigure.vue';
 
 import { inject } from 'vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
+import { STAGE_NAMES, STAGE_COLORS } from '@/composeables/useStages';
 
 const store = inject(AccountStoreKey)!;
 
@@ -72,6 +73,7 @@ onBeforeUnmount(() => detachFocus?.());
     marginLeft: 70,
     y: { ticks: 5, tickFormat: '$,.1s', label: null },
     x: { ticks: ageBin, label: null },
+    color: { domain: STAGE_NAMES, range: STAGE_NAMES.map((s) => STAGE_COLORS[s]) },
     style: { fontSize: '22px' },
     marks: [
       Plot.barY(store.projectionGraph, {

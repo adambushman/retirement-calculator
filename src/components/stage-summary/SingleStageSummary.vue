@@ -2,9 +2,10 @@
 import { format } from 'd3-format';
 
 import IconToolTip from '@/components/IconToolTip.vue';
+import { STAGE_COLORS, type StageName } from '@/composeables/useStages';
 
 const props = defineProps<{
-  stage: 'Pre-Retirement' | 'Go-Go Years' | 'Slow-Go Years' | 'No-Go Years',
+  stage: StageName,
   finalBalance: number,
   totalFlow: number,
   avgMonthlyFlow: number,
@@ -12,15 +13,9 @@ const props = defineProps<{
   years: Array<number>
 }>();
 
-const stageClass = {
-  'Pre-Retirement': 'border-red-400',
-  'Go-Go Years': 'border-blue-400',
-  'Slow-Go Years': 'border-teal-300',
-  'No-Go Years': 'border-yellow-400'
-};
-
-const stageDescription = {
+const stageDescription: Record<StageName, string> = {
   'Pre-Retirement': 'Active working years when you\'re building savings and preparing financially for retirement.',
+  'Bridge': 'The gap between an account\'s own withdrawal start age and full retirement, when some accounts may already be drawn on to partially replace income.',
   'Go-Go Years': 'The early stage of retirement when you\'re healthiest, most active, and typically spending more on travel and lifestyle.',
   'Slow-Go Years': 'The middle stage of retirement when activity levels naturally decline and spending begins to moderate.',
   'No-Go Years': 'The late stage of retirement marked by reduced mobility, increased rest, and higher healthcare-related expenses.'
@@ -31,7 +26,7 @@ const stageDescription = {
 <div class="flex flex-col items-center space-y-4">
   <div class="text-center space-y-1">
     <h3
-    :class="stageClass[stage]"
+    :style="{ borderColor: STAGE_COLORS[stage] }"
     class="text-sm lg:text-md border border-2 ps-3 pe-6 py-1 rounded-lg relative"
     >
       {{ stage }}

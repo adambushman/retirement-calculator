@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import Panel from '@/volt/Panel.vue';
+import { computed, inject } from 'vue';
 import StageSummary from '@/components/stage-summary/SingleStageSummary.vue';
 
-import { inject } from 'vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 const store = inject(AccountStoreKey)!;
 
@@ -10,17 +9,38 @@ const store = inject(AccountStoreKey)!;
 // across the months the stage actually spans.
 const perMonth = (totalFlow: number, years: number) =>
   years > 0 ? totalFlow / years / 12 : 0;
+
+// This account stops contributing at whichever comes first, its own
+// withdrawal start age or the portfolio's Retirement Age (see
+// useAccountProjection.ts's contributingCutoffAge) — Pre-Retirement always
+// ends there, not at the account's own start age.
+const contributingCutoffAge = computed(() => Math.min(store.withdrawalStartAge, store.retirementAge));
+
+// A Bridge stage only exists for this account if it starts withdrawing
+// before the portfolio-wide Retirement Age.
+const hasBridge = computed(() => store.withdrawalStartAge < store.retirementAge);
+const bridgeYears = computed(() => Math.max(0, store.retirementAge - store.withdrawalStartAge));
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
     <StageSummary
       stage="Pre-Retirement"
       :finalBalance="store.finalPreRetirementBalance"
       :totalFlow="store.totalPreRetirementFlow"
       :avgMonthlyFlow="perMonth(store.totalPreRetirementFlow, store.yearsUntilRetirement)"
       :totalGrowth="store.totalPreRetirementGrowth"
-      :years="[store.ageToday, store.withdrawalStartAge - 1]"
+      :years="[store.ageToday, contributingCutoffAge - 1]"
+    />
+
+    <StageSummary
+      v-if="hasBridge"
+      stage="Bridge"
+      :finalBalance="store.finalBridgeBalance"
+      :totalFlow="store.totalBridgeFlow"
+      :avgMonthlyFlow="perMonth(store.totalBridgeFlow, bridgeYears)"
+      :totalGrowth="store.totalBridgeGrowth"
+      :years="[store.withdrawalStartAge, store.retirementAge - 1]"
     />
 
     <StageSummary
@@ -29,7 +49,7 @@ const perMonth = (totalFlow: number, years: number) =>
       :totalFlow="store.totalGoGoFlow"
       :avgMonthlyFlow="perMonth(store.totalGoGoFlow, store.yearsInGoGo)"
       :totalGrowth="store.totalGoGoGrowth"
-      :years="[store.withdrawalStartAge, store.retirementBoundaries[0]! - 1]"
+      :years="[store.retirementAge, store.retirementBoundaries[0]! - 1]"
     />
 
     <StageSummary

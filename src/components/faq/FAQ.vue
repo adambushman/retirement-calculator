@@ -47,17 +47,6 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
     </QuestionAnswer>
 
     <QuestionAnswer value="4">
-      <template #question>How should I interpret the recommendations?</template>
-      <template #answer>
-        The recommendations are rooted in the concepts shared in Bill Perkin's book
-        <a class="link" href="https://www.diewithzerobook.com/welcome" _target="blank"><i>Die With Zero</i></a>.
-        Making these adjustings would push the retirement fund balance at end of life closer to zero, allowing more of your funds or time for maximizing life experiences.
-        <br><br>
-        Recommendations <span class="uppercase underline">are not</span> to be interpreted as financial advice.
-      </template>
-    </QuestionAnswer>
-
-    <QuestionAnswer value="5">
       <template #question>What is not considered?</template>
       <template #answer>
         At the moment, this calculator focuses on retirement accounts (i.e. 401K, IRA, etc). It is not designed to account for social security, pensions, or income during retirement years.
@@ -68,13 +57,3 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
   </Accordion>
 </div>
 </template>
-
-<style scoped>
-.link {
-  color: var(--p-primary-color);
-  text-decoration: underline;
-}
-.link:hover {
-  color: var(--p-primary-hover-color)
-}
-</style>

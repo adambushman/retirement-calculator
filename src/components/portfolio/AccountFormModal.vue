@@ -77,11 +77,18 @@ function cancel() {
 function done() {
   if (isNew) {
     const id = portfolio.addAccount(draftName.value);
-    copyAccountFields(draft, useAccountStore(id));
+    const account = useAccountStore(id);
+    copyAccountFields(draft, account);
+    // A brand-new store's persistence subscription can miss writes that land
+    // in the same tick as its own creation, so save explicitly rather than
+    // relying on it to pick up copyAccountFields' mutations on its own.
+    account.$persist();
     emit('close', id);
   } else {
     portfolio.renameAccount(props.accountId!, draftName.value);
-    copyAccountFields(draft, useAccountStore(props.accountId!));
+    const account = useAccountStore(props.accountId!);
+    copyAccountFields(draft, account);
+    account.$persist();
     emit('close');
   }
 }
