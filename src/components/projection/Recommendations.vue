@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useRetirementStore } from '@/stores/useRetirementStore';
+import { inject } from 'vue';
+import { AccountStoreKey } from '@/stores/accountStoreKey';
 
-const store = useRetirementStore();
+const store = inject(AccountStoreKey)!;
 </script>
 
 <template>

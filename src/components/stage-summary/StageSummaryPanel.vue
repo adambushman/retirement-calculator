@@ -2,8 +2,9 @@
 import Panel from '@/volt/Panel.vue';
 import StageSummary from '@/components/stage-summary/SingleStageSummary.vue';
 
-import { useRetirementStore } from "@/stores/useRetirementStore";
-const store = useRetirementStore();
+import { inject } from 'vue';
+import { AccountStoreKey } from '@/stores/accountStoreKey';
+const store = inject(AccountStoreKey)!;
 
 // Average monthly contribution/withdrawal for a stage: its total flow spread
 // across the months the stage actually spans.

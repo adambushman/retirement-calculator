@@ -7,7 +7,17 @@ import { prepareGrowthProjection } from '@/composeables/useProjections';
 import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
 import { formatRange } from '@/composeables/useHelpers';
 
-export const useRetirementStore = defineStore("retirement", () => {
+// Pinia stores are normally singletons keyed by a fixed id. To model several
+// independent accounts with the exact same shape (inputs, projection engine,
+// computed summaries), each account gets its own store instance keyed by a
+// dynamic id — `defineStore` is called once per account id and cached here,
+// so re-requesting the same id returns the same live store instead of a fresh
+// definition. `persist: true` (via pinia-plugin-persistedstate, see main.ts)
+// saves each instance to localStorage under its own key (`account-<id>`).
+const accountStoreDefs = new Map<string, ReturnType<typeof defineAccountStore>>();
+
+function defineAccountStore(id: string) {
+  return defineStore(`account-${id}`, () => {
   // Base reactive values
   const ageToday = ref<number>(25);
   const ageRetirement = ref<number>(60);
@@ -399,4 +409,15 @@ export const useRetirementStore = defineStore("retirement", () => {
     totalNoGoGrowth,
     recommendations,
   };
-});
+  }, { persist: true });
+}
+
+/** Get (or lazily create) the store instance for one account. */
+export function useAccountStore(id: string) {
+  let def = accountStoreDefs.get(id);
+  if (!def) {
+    def = defineAccountStore(id);
+    accountStoreDefs.set(id, def);
+  }
+  return def();
+}
