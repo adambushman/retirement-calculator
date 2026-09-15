@@ -16,9 +16,13 @@ import { formatRange } from '@/composeables/useHelpers';
 // saves each instance to localStorage under its own key (`account-<id>`).
 const accountStoreDefs = new Map<string, ReturnType<typeof defineAccountStore>>();
 
+export type AccountType = 'traditional' | 'roth' | 'brokerage';
+
 function defineAccountStore(id: string) {
   return defineStore(`account-${id}`, () => {
   // Base reactive values
+  const accountType = ref<AccountType>('traditional');
+  const ownerName = ref<string>('');
   const ageToday = ref<number>(25);
   const ageRetirement = ref<number>(60);
   const lifeExpectancy = ref<number>(90);
@@ -366,6 +370,8 @@ function defineAccountStore(id: string) {
   // Return all necessary state
   return {
     // Base values
+    accountType,
+    ownerName,
     ageToday,
     ageRetirement,
     lifeExpectancy,

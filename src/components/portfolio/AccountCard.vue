@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const portfolio = usePortfolioStore();
 const store = useAccountStore(props.accountId);
 // Scope this account's store to AccountValues/ProjectionPanel and everything
-// under them, the same key AccountFormModal provides for InputsDrawer.
+// under them, the same key AccountFormModal provides for its wizard steps.
 provide(AccountStoreKey, store);
 
 const editingName = ref(false);

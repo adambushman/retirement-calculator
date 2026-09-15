@@ -40,6 +40,11 @@ export const usePortfolioStore = defineStore("portfolio", () => {
     return addAccount();
   }
 
+  function clearAllAccounts() {
+    accounts.value.forEach((a) => localStorage.removeItem(`account-${a.id}`));
+    accounts.value = [];
+  }
+
   return {
     accounts,
     hasSeeded,
@@ -47,5 +52,6 @@ export const usePortfolioStore = defineStore("portfolio", () => {
     removeAccount,
     renameAccount,
     seedDefaultAccount,
+    clearAllAccounts,
   };
 }, { persist: true });

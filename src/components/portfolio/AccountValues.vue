@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import { format } from 'd3-format';
 
 import SectionHeader from '@/components/SectionHeader.vue';
@@ -9,6 +9,13 @@ const store = inject(AccountStoreKey)!;
 
 const dollars = format('$,.0f');
 const percent = format('.2~f');
+
+const accountTypeLabels: Record<string, string> = {
+  traditional: 'Traditional',
+  roth: 'Roth',
+  brokerage: 'Brokerage',
+};
+const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? store.accountType);
 </script>
 
 <template>
@@ -16,6 +23,20 @@ const percent = format('.2~f');
     <SectionHeader>Inputs</SectionHeader>
 
     <div class="space-y-5">
+      <div>
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Account Details</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <div>
+            <p class="text-sm text-gray-400">Account Type</p>
+            <p class="font-medium">{{ accountTypeLabel }}</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-400">Owner</p>
+            <p class="font-medium">{{ store.ownerName || 'Unassigned' }}</p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Earning & Saving</h4>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
