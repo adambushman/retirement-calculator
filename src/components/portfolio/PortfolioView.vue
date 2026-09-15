@@ -7,7 +7,7 @@ import CheckIcon from '@primevue/icons/check';
 
 import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
-import Section from '@/components/Section.vue';
+import BodySectionHeader from '@/components/BodySectionHeader.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
@@ -67,8 +67,9 @@ function closeAccountModal(createdAccountId?: string) {
 
 <template>
   <div>
-    <Section v-if="showFullView" title="Portfolio" class="mb-6">
-      <template #actions>
+    <div v-if="showFullView">
+      <div class="flex items-center justify-between mb-4">
+        <BodySectionHeader>Portfolio</BodySectionHeader>
         <SecondaryButton
           label="Portfolio Assumptions"
           aria-label="Edit portfolio assumptions"
@@ -78,9 +79,9 @@ function closeAccountModal(createdAccountId?: string) {
             <PencilIcon style="width: 14px; height: 14px" />
           </template>
         </SecondaryButton>
-      </template>
+      </div>
       <PortfolioSummary />
-    </Section>
+    </div>
 
     <div v-if="!showFullView" class="grid gap-4 sm:grid-cols-2">
       <div
@@ -135,23 +136,26 @@ function closeAccountModal(createdAccountId?: string) {
       </div>
     </div>
 
-    <Section v-else title="Accounts">
-      <template #actions>
-        <SecondaryButton
-          label="Clear All"
-          aria-label="Clear all accounts"
-          @click="clearAll"
-        >
-          <template #icon>
-            <TrashIcon style="width: 14px; height: 14px" />
-          </template>
-        </SecondaryButton>
-        <Button rounded aria-label="Add account" @click="addAccount">
-          <template #icon>
-            <PlusIcon />
-          </template>
-        </Button>
-      </template>
+    <div v-else>
+      <div class="flex items-center justify-between mb-4">
+        <BodySectionHeader>Accounts</BodySectionHeader>
+        <div class="flex items-center gap-2">
+          <SecondaryButton
+            label="Clear All"
+            aria-label="Clear all accounts"
+            @click="clearAll"
+          >
+            <template #icon>
+              <TrashIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+          <Button rounded aria-label="Add account" @click="addAccount">
+            <template #icon>
+              <PlusIcon />
+            </template>
+          </Button>
+        </div>
+      </div>
 
       <div class="space-y-4">
         <AccountCard
@@ -164,7 +168,7 @@ function closeAccountModal(createdAccountId?: string) {
           @edit="editAccount"
         />
       </div>
-    </Section>
+    </div>
 
     <PortfolioAssumptionsModal v-if="showAssumptionsModal" @close="showAssumptionsModal = false" />
 

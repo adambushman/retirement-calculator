@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import Section from '@/components/Section.vue';
+import BodySectionHeader from '@/components/BodySectionHeader.vue';
 import Accordion from '@/volt/Accordion.vue';
 import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
 
 </script>
 
 <template>
-<Section title="Frequently Asked Questions">
+<div>
+  <BodySectionHeader>Frequently Asked Questions</BodySectionHeader>
+
   <Accordion multiple>
     <QuestionAnswer value="0">
       <template #question>How does the calculator work?</template>
@@ -64,7 +66,7 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
       </template>
     </QuestionAnswer>
   </Accordion>
-</Section>
+</div>
 </template>
 
 <style scoped>

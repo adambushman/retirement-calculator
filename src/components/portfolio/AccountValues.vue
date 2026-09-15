@@ -2,7 +2,7 @@
 import { computed, inject } from 'vue';
 import { format } from 'd3-format';
 
-import Section from '@/components/Section.vue';
+import AccountSectionHeader from '@/components/AccountSectionHeader.vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 
 const store = inject(AccountStoreKey)!;
@@ -54,8 +54,8 @@ const columns = computed(() => [
 </script>
 
 <template>
-  <Section title="Inputs">
-    <div class="grid gap-6 sm:grid-cols-3">
+  <AccountSectionHeader title="Inputs">
+    <div class="grid gap-10 sm:grid-cols-3">
       <div v-for="column in columns" :key="column.title">
         <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">{{ column.title }}</h4>
         <table class="w-full text-sm border-collapse">
@@ -68,5 +68,5 @@ const columns = computed(() => [
         </table>
       </div>
     </div>
-  </Section>
+  </AccountSectionHeader>
 </template>
