@@ -20,7 +20,7 @@ const perMonth = (totalFlow: number, years: number) =>
       :totalFlow="store.totalPreRetirementFlow"
       :avgMonthlyFlow="perMonth(store.totalPreRetirementFlow, store.yearsUntilRetirement)"
       :totalGrowth="store.totalPreRetirementGrowth"
-      :years="[store.ageToday, store.ageRetirement - 1]"
+      :years="[store.ageToday, store.withdrawalStartAge - 1]"
     />
 
     <StageSummary
@@ -29,7 +29,7 @@ const perMonth = (totalFlow: number, years: number) =>
       :totalFlow="store.totalGoGoFlow"
       :avgMonthlyFlow="perMonth(store.totalGoGoFlow, store.yearsInGoGo)"
       :totalGrowth="store.totalGoGoGrowth"
-      :years="[store.ageRetirement, store.retirementBoundaries[0]! - 1]"
+      :years="[store.withdrawalStartAge, store.retirementBoundaries[0]! - 1]"
     />
 
     <StageSummary

@@ -9,10 +9,6 @@ export interface AccountMeta {
 export const usePortfolioStore = defineStore("portfolio", () => {
   const accounts = ref<AccountMeta[]>([]);
 
-  // Only ever auto-seed a first default account once, so deliberately
-  // deleting the last account doesn't bring one back.
-  const hasSeeded = ref<boolean>(false);
-
   function addAccount(name?: string): string {
     const id = crypto.randomUUID();
     accounts.value.push({
@@ -34,12 +30,6 @@ export const usePortfolioStore = defineStore("portfolio", () => {
     if (account) account.name = name;
   }
 
-  function seedDefaultAccount() {
-    if (hasSeeded.value) return null;
-    hasSeeded.value = true;
-    return addAccount();
-  }
-
   function clearAllAccounts() {
     accounts.value.forEach((a) => localStorage.removeItem(`account-${a.id}`));
     accounts.value = [];
@@ -47,11 +37,9 @@ export const usePortfolioStore = defineStore("portfolio", () => {
 
   return {
     accounts,
-    hasSeeded,
     addAccount,
     removeAccount,
     renameAccount,
-    seedDefaultAccount,
     clearAllAccounts,
   };
 }, { persist: true });

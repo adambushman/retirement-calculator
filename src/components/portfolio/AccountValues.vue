@@ -41,24 +41,14 @@ const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? 
         <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Earning & Saving</h4>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
           <div>
-            <p class="text-sm text-gray-400">Annual Income Today (Gross)</p>
-            <p class="font-medium">{{ dollars(store.annualIncome) }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Annual Raises</p>
-            <p class="font-medium">{{ percent(store.annualRaises) }}%</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Your Age Today</p>
-            <p class="font-medium">{{ store.ageToday }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Investment Balance Today</p>
+            <p class="text-sm text-gray-400">Account Balance Today</p>
             <p class="font-medium">{{ dollars(store.currentBalance) }}</p>
           </div>
           <div>
             <p class="text-sm text-gray-400">Savings/Contribution Rate</p>
-            <p class="font-medium">{{ percent(store.savingsRate) }}%</p>
+            <p class="font-medium">
+              {{ store.contributionMode === 'dollar' ? `${dollars(store.contributionAmount)}/mo` : `${percent(store.savingsRate)}%` }}
+            </p>
           </div>
           <div>
             <p class="text-sm text-gray-400">Growth Rate (Pre-Retirement)</p>
@@ -71,12 +61,8 @@ const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? 
         <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Retirement Plan</h4>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
           <div>
-            <p class="text-sm text-gray-400">Retirement Age</p>
-            <p class="font-medium">{{ store.ageRetirement }}</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-400">Life Expectancy</p>
-            <p class="font-medium">{{ store.lifeExpectancy }}</p>
+            <p class="text-sm text-gray-400">Withdrawal Start Age</p>
+            <p class="font-medium">{{ store.withdrawalStartAge }}</p>
           </div>
           <div>
             <p class="text-sm text-gray-400">Growth Rate (Intra-Retirement)</p>
@@ -99,16 +85,6 @@ const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? 
           <div>
             <p class="text-sm text-gray-400">No-Go Withdrawal Rate</p>
             <p class="font-medium">{{ percent(store.incomeReplacementNoGo) }}%</p>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Miscellaneous</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-          <div>
-            <p class="text-sm text-gray-400">Annual Inflation</p>
-            <p class="font-medium">{{ percent(store.annualInflation) }}%</p>
           </div>
         </div>
       </div>

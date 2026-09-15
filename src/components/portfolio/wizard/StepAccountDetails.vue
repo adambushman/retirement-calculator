@@ -1,22 +1,13 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { inject } from 'vue';
 
 import { AccountStoreKey } from '@/stores/accountStoreKey';
-import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import OwnerSelect from '@/components/portfolio/wizard/OwnerSelect.vue';
 import type { AccountType } from '@/stores/useAccountStore';
 
-const props = defineProps<{
-  accountId: string;
-}>();
+const name = defineModel<string>('name', { default: '' });
 
 const store = inject(AccountStoreKey)!;
-const portfolio = usePortfolioStore();
-
-const name = computed({
-  get: () => portfolio.accounts.find((a) => a.id === props.accountId)?.name ?? '',
-  set: (value: string) => portfolio.renameAccount(props.accountId, value),
-});
 
 const accountTypes: Array<{ value: AccountType; label: string; description: string }> = [
   { value: 'traditional', label: 'Traditional', description: 'Pre-tax contributions' },
@@ -53,21 +44,23 @@ const accountTypes: Array<{ value: AccountType; label: string; description: stri
       </div>
     </div>
 
-    <div>
-      <label class="block text-sm mb-2 text-gray-400" for="account-name-input">Account Name</label>
-      <input
-        id="account-name-input"
-        v-model="name"
-        type="text"
-        class="rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950
-          px-3 py-1.5 text-sm w-full max-w-sm outline-none focus-visible:outline focus-visible:outline-1
-          focus-visible:outline-primary"
-      />
-    </div>
+    <div class="flex flex-col sm:flex-row gap-6">
+      <div class="flex-1 min-w-0">
+        <label class="block text-sm mb-2 text-gray-400" for="account-name-input">Account Name</label>
+        <input
+          id="account-name-input"
+          v-model="name"
+          type="text"
+          class="rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950
+            px-3 py-1.5 text-sm w-full outline-none focus-visible:outline focus-visible:outline-1
+            focus-visible:outline-primary"
+        />
+      </div>
 
-    <div>
-      <label class="block text-sm mb-2 text-gray-400">Owner</label>
-      <OwnerSelect v-model="store.ownerName" />
+      <div class="flex-1 min-w-0">
+        <label class="block text-sm mb-2 text-gray-400">Owner</label>
+        <OwnerSelect v-model="store.ownerName" />
+      </div>
     </div>
   </div>
 </template>

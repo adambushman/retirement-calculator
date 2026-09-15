@@ -35,7 +35,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 </script>
 
 <template>
-  <div ref="root" class="relative max-w-sm">
+  <div ref="root" class="relative">
     <button
       type="button"
       @click="open = !open"

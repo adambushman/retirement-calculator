@@ -14,23 +14,11 @@ const store = inject(AccountStoreKey)!;
     <div>
       <label
       class="block text-sm mb-2 text-gray-400"
-      for="retire-age-input"
-      >Retirement Age</label>
+      for="withdrawal-start-age-input"
+      >Withdrawal Start Age</label>
       <InputNumber
-      v-model.number="store.ageRetirement"
-      inputId="retire-age-input"
-      size="small"
-      />
-    </div>
-
-    <div>
-      <label
-      class="block text-sm mb-2 text-gray-400"
-      for="life-expectancy-input"
-      >Life Expectancy</label>
-      <InputNumber
-      v-model.number="store.lifeExpectancy"
-      inputId="life-expectancy-input"
+      v-model.number="store.withdrawalStartAge"
+      inputId="withdrawal-start-age-input"
       size="small"
       />
     </div>
@@ -66,7 +54,7 @@ const store = inject(AccountStoreKey)!;
       class="w-50 mt-0"
       inputId="retire-stages-input"
       range
-      :min="store.ageRetirement"
+      :min="store.withdrawalStartAge"
       :max="store.lifeExpectancy"
       ></Slider>
     </div>
