@@ -1,16 +1,24 @@
 <script setup lang="ts">
+import AccordionPanel from '@/volt/AccordionPanel.vue';
+import AccordionHeader from '@/volt/AccordionHeader.vue';
+import AccordionContent from '@/volt/AccordionContent.vue';
 
+defineProps<{
+  value: string;
+}>();
 </script>
 
 <template>
-<div class="question space-y-3 italic">
-  <p class="text-lg font-bold">
-    Q: <slot name="question" />
-  </p>
-  <p class="answer text-base border-l-2 ms-3 ps-3">
-    <slot name="answer"/>
-  </p>
-</div>
+<AccordionPanel :value="value">
+  <AccordionHeader>
+    <span class="italic">Q: <slot name="question" /></span>
+  </AccordionHeader>
+  <AccordionContent>
+    <p class="answer text-base border-l-2 ms-3 ps-3 italic">
+      <slot name="answer" />
+    </p>
+  </AccordionContent>
+</AccordionPanel>
 </template>
 
 <style scoped>

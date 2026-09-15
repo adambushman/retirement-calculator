@@ -67,11 +67,10 @@ function closeAccountModal(createdAccountId?: string) {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4">
+    <div v-if="showFullView" class="flex items-center justify-between mb-4">
       <SectionHeader>Accounts</SectionHeader>
       <div class="flex items-center gap-2">
         <SecondaryButton
-          v-if="assumptions.isDescribed"
           label="Portfolio Assumptions"
           aria-label="Edit portfolio assumptions"
           @click="showAssumptionsModal = true"
@@ -81,7 +80,6 @@ function closeAccountModal(createdAccountId?: string) {
           </template>
         </SecondaryButton>
         <SecondaryButton
-          v-if="portfolio.accounts.length"
           label="Clear All"
           aria-label="Clear all accounts"
           @click="clearAll"
@@ -90,7 +88,7 @@ function closeAccountModal(createdAccountId?: string) {
             <TrashIcon style="width: 14px; height: 14px" />
           </template>
         </SecondaryButton>
-        <Button v-if="portfolio.accounts.length" rounded aria-label="Add account" @click="addAccount">
+        <Button rounded aria-label="Add account" @click="addAccount">
           <template #icon>
             <PlusIcon />
           </template>

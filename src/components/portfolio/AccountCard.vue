@@ -154,9 +154,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       </span>
     </div>
 
-    <div v-if="!collapsed" class="space-y-6 lg:flex lg:space-x-6 lg:space-y-0">
-      <AccountValues class="flex-1 lg:min-w-120" />
-      <ProjectionPanel class="flex-2" />
+    <div v-if="!collapsed" class="space-y-6">
+      <AccountValues class="w-full" />
+      <ProjectionPanel class="w-full" />
     </div>
   </Panel>
 </template>
