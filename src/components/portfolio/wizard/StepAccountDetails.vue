@@ -2,7 +2,6 @@
 import { inject } from 'vue';
 
 import { AccountStoreKey } from '@/stores/accountStoreKey';
-import OwnerSelect from '@/components/portfolio/wizard/OwnerSelect.vue';
 import type { AccountType } from '@/stores/useAccountStore';
 
 const name = defineModel<string>('name', { default: '' });
@@ -58,8 +57,15 @@ const accountTypes: Array<{ value: AccountType; label: string; description: stri
       </div>
 
       <div class="flex-1 min-w-0">
-        <label class="block text-sm mb-2 text-gray-400">Owner</label>
-        <OwnerSelect v-model="store.ownerName" />
+        <label class="block text-sm mb-2 text-gray-400" for="account-owner-input">Account Owner</label>
+        <input
+          id="account-owner-input"
+          v-model="store.ownerName"
+          type="text"
+          class="rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950
+            px-3 py-1.5 text-sm w-full outline-none focus-visible:outline focus-visible:outline-1
+            focus-visible:outline-primary"
+        />
       </div>
     </div>
   </div>
