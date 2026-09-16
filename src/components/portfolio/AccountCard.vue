@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, provide, onBeforeUnmount } from 'vue';
+import { ref, computed, provide, onBeforeUnmount } from 'vue';
 import { format } from 'd3-format';
 import ChevronDownIcon from '@primevue/icons/chevrondown';
 import ChevronUpIcon from '@primevue/icons/chevronup';
@@ -8,8 +8,9 @@ import Panel from '@/volt/Panel.vue';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
+import { ACCOUNT_TYPE_LABELS } from '@/composeables/useAccountTypes';
 import AccountValues from '@/components/portfolio/AccountValues.vue';
-import ProjectionPanel from '@/components/projection/ProjectionPanel.vue';
+import AccountGrowthSummary from '@/components/portfolio/AccountGrowthSummary.vue';
 
 const props = defineProps<{
   accountId: string;
@@ -24,12 +25,14 @@ const emit = defineEmits<{
 
 const portfolio = usePortfolioStore();
 const store = useAccountStore(props.accountId);
-// Scope this account's store to AccountValues/ProjectionPanel and everything
-// under them, the same key AccountFormModal provides for its wizard steps.
+// Scope this account's store to AccountValues/AccountGrowthSummary and
+// everything under them, the same key AccountFormModal provides for its
+// wizard steps.
 provide(AccountStoreKey, store);
 
 const editingName = ref(false);
 const draftName = ref(props.name);
+const accountTypeLabel = computed(() => ACCOUNT_TYPE_LABELS[store.accountType] ?? store.accountType);
 
 function startRename() {
   draftName.value = props.name;
@@ -78,25 +81,28 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 <template>
   <Panel>
     <template #header>
-      <input
-        v-if="editingName"
-        v-model="draftName"
-        @blur="commitRename"
-        @keyup.enter="commitRename"
-        @keyup.esc="editingName = false"
-        @click.stop
-        class="text-lg lg:text-xl font-bold bg-transparent border-b border-current outline-none min-w-0 w-40"
-        autofocus
-      />
-      <button
-        v-else
-        type="button"
-        @click.stop="startRename"
-        class="text-lg lg:text-xl font-bold truncate max-w-48 text-left"
-        title="Click to rename"
-      >
-        {{ name }}
-      </button>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <input
+          v-if="editingName"
+          v-model="draftName"
+          @blur="commitRename"
+          @keyup.enter="commitRename"
+          @keyup.esc="editingName = false"
+          @click.stop
+          class="text-lg lg:text-xl font-bold bg-transparent border-b border-current outline-none min-w-0 w-40"
+          autofocus
+        />
+        <button
+          v-else
+          type="button"
+          @click.stop="startRename"
+          class="text-lg lg:text-xl font-bold truncate max-w-48 text-left"
+          title="Click to rename"
+        >
+          {{ name }}
+        </button>
+        <span class="text-lg lg:text-xl font-bold text-gray-400 shrink-0">| {{ accountTypeLabel }}</span>
+      </div>
     </template>
 
     <template #icons>
@@ -146,17 +152,17 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       </div>
     </template>
 
-    <div class="flex items-center gap-2 text-sm lg:text-base text-gray-500 mb-2">
+    <div class="flex items-center gap-2 text-sm lg:text-base text-gray-500 -mt-3">
       <span>{{ format('$,.0f')(store.currentBalance) }} today</span>
       <span>&rarr;</span>
-      <span :class="store.finalNoGoBalance < 0 ? 'text-red-500' : 'text-emerald-500'">
-        {{ format('$,.0f')(store.finalNoGoBalance) }} at end of plan
+      <span :class="store.balanceAtWithdrawalStart < 0 ? 'text-red-500' : 'text-emerald-500'">
+        {{ format('$,.0f')(store.balanceAtWithdrawalStart) }} by first withdrawal
       </span>
     </div>
 
     <div v-if="!collapsed" class="space-y-6">
-      <AccountValues class="w-full" />
-      <ProjectionPanel class="w-full" />
+      <AccountValues class="w-full mt-6" />
+      <AccountGrowthSummary class="w-full" />
     </div>
   </Panel>
 </template>

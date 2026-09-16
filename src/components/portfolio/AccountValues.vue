@@ -4,18 +4,14 @@ import { format } from 'd3-format';
 
 import AccountSectionHeader from '@/components/AccountSectionHeader.vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
+import { ACCOUNT_TYPE_LABELS } from '@/composeables/useAccountTypes';
 
 const store = inject(AccountStoreKey)!;
 
 const dollars = format('$,.0f');
 const percent = format('.2~f');
 
-const accountTypeLabels: Record<string, string> = {
-  traditional: 'Traditional',
-  roth: 'Roth',
-  brokerage: 'Brokerage',
-};
-const accountTypeLabel = computed(() => accountTypeLabels[store.accountType] ?? store.accountType);
+const accountTypeLabel = computed(() => ACCOUNT_TYPE_LABELS[store.accountType] ?? store.accountType);
 
 const contributionRateLabel = computed(() =>
   store.contributionMode === 'dollar'
@@ -25,7 +21,7 @@ const contributionRateLabel = computed(() =>
 
 const accountDetailsRows = computed(() => [
   { label: 'Account Type', value: accountTypeLabel.value },
-  { label: 'Owner', value: store.ownerName || 'Unassigned' },
+  { label: 'Account Owner', value: store.ownerName || 'Unassigned' },
 ]);
 
 const earningSavingRows = computed(() => [

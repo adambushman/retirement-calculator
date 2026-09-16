@@ -181,6 +181,21 @@ function defineAccountStore(id: string, persist: boolean) {
     };
   });
 
+  // The balance right as withdrawals begin — i.e. this account's own
+  // accumulation-phase endpoint. Not simply finalPreRetirementBalance: an
+  // account whose own withdrawal start age is later than the portfolio's
+  // Retirement Age keeps growing, untouched, through a dormant gap between
+  // the two, which finalPreRetirementBalance wouldn't capture.
+  const balanceAtWithdrawalStart = computed((): number => {
+    const arr = futureProjection.value?.[inflationPerspective.value];
+    if (!arr || arr.length === 0) return currentBalance.value;
+
+    const index = withdrawalStartAge.value - ageToday.value;
+    if (index <= 0) return currentBalance.value;
+    if (index >= arr.length) return arr[arr.length - 1]!.endBalance;
+    return arr[index]!.startBalance;
+  });
+
   const avgMonthlyWithdrawal = computed(() => {
     const arr = futureProjection.value?.[inflationPerspective.value];
     if (!arr || arr.length === 0) {
@@ -210,6 +225,13 @@ function defineAccountStore(id: string, persist: boolean) {
 
   const totalPreRetirementFlow = computed(
     (): number => futureProjectionResults.value.totalPreRetirementFlow
+  );
+
+  // Derived directly from the balances/contributions above (rather than
+  // totalPreRetirementGrowth) so it stays exact even across a dormant gap:
+  // today's balance + contributed + grew === balance at withdrawal start.
+  const growthToWithdrawalStart = computed((): number =>
+    balanceAtWithdrawalStart.value - currentBalance.value - totalPreRetirementFlow.value
   );
   const totalBridgeFlow = computed(
     (): number => futureProjectionResults.value.totalBridgeFlow
@@ -293,6 +315,8 @@ function defineAccountStore(id: string, persist: boolean) {
     projectionGraph,
     avgMonthlyWithdrawal,
     futureProjectionResults,
+    balanceAtWithdrawalStart,
+    growthToWithdrawalStart,
     finalPreRetirementBalance,
     finalBridgeBalance,
     finalGoGoBalance,
