@@ -3,6 +3,7 @@ import { inject } from 'vue';
 
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 import type { AccountType } from '@/stores/useAccountStore';
+import { ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
 
 const name = defineModel<string>('name', { default: '' });
 
@@ -35,6 +36,7 @@ const accountTypes: Array<{ value: AccountType; label: string; description: stri
             v-model="store.accountType"
             class="mt-1 accent-primary"
           />
+          <component :is="ACCOUNT_TYPE_ICONS[type.value]" class="mt-0.5 shrink-0" style="width: 16px; height: 16px" />
           <span>
             <span class="block text-sm font-medium">{{ type.label }}</span>
             <span class="block text-xs text-gray-400">{{ type.description }}</span>

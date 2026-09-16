@@ -8,7 +8,7 @@ import Panel from '@/volt/Panel.vue';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
-import { ACCOUNT_TYPE_LABELS } from '@/composeables/useAccountTypes';
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
 import AccountValues from '@/components/portfolio/AccountValues.vue';
 import AccountGrowthSummary from '@/components/portfolio/AccountGrowthSummary.vue';
 
@@ -33,6 +33,11 @@ provide(AccountStoreKey, store);
 const editingName = ref(false);
 const draftName = ref(props.name);
 const accountTypeLabel = computed(() => ACCOUNT_TYPE_LABELS[store.accountType] ?? store.accountType);
+const accountTypeIcon = computed(() => ACCOUNT_TYPE_ICONS[store.accountType]);
+
+// Same SI-prefixed formatting as the Results KPIs (see AccountGrowthSummary)
+// — this line is a quick sense of scale, not a precise figure.
+const compactDollars = format('$.3~s');
 
 function startRename() {
   draftName.value = props.name;
@@ -101,7 +106,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
         >
           {{ name }}
         </button>
-        <span class="text-lg lg:text-xl font-bold text-gray-400 shrink-0">| {{ accountTypeLabel }}</span>
+        <span class="flex items-center gap-1.5 text-lg lg:text-xl font-bold text-gray-400 shrink-0">
+          <span>|</span>
+          <component :is="accountTypeIcon" style="width: 18px; height: 18px" />
+          {{ accountTypeLabel }}
+        </span>
       </div>
     </template>
 
@@ -153,10 +162,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
     </template>
 
     <div class="flex items-center gap-2 text-sm lg:text-base text-gray-500 -mt-3">
-      <span>{{ format('$,.0f')(store.currentBalance) }} today</span>
+      <span>{{ compactDollars(store.currentBalance) }} today</span>
       <span>&rarr;</span>
       <span :class="store.balanceAtWithdrawalStart < 0 ? 'text-red-500' : 'text-emerald-500'">
-        {{ format('$,.0f')(store.balanceAtWithdrawalStart) }} by first withdrawal
+        {{ compactDollars(store.balanceAtWithdrawalStart) }} by first withdrawal
       </span>
     </div>
 
