@@ -6,7 +6,7 @@ defineProps<{
 
 <template>
 <div class="flex items-stretch gap-3">
-  <div class="w-0.5 bg-primary shrink-0"></div>
+  <div class="w-0.25 bg-primary shrink-0"></div>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between gap-2 mb-3">
       <h2 class="text-lg lg:text-xl font-bold text-primary truncate">{{ title }}</h2>
