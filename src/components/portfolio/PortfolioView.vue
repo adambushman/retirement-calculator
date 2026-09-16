@@ -3,12 +3,15 @@ import { reactive, ref, computed } from 'vue';
 import PlusIcon from '@primevue/icons/plus';
 import TrashIcon from '@primevue/icons/trash';
 import PencilIcon from '@primevue/icons/pencil';
+import RefreshIcon from '@primevue/icons/refresh';
 import CheckIcon from '@primevue/icons/check';
 
 import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
 import BodySectionHeader from '@/components/BodySectionHeader.vue';
+import ConfirmModal from '@/components/ConfirmModal.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
+import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
 import PortfolioAssumptionsModal from '@/components/portfolio/PortfolioAssumptionsModal.vue';
@@ -27,10 +30,17 @@ const showFullView = computed(() => assumptions.isDescribed && portfolio.account
 
 const showAssumptionsModal = ref(false);
 
-function clearAll() {
-  if (confirm('Remove all accounts? This clears every saved account and can\'t be undone.')) {
-    portfolio.clearAllAccounts();
-  }
+const showClearAllConfirm = ref(false);
+function clearAllAccounts() {
+  portfolio.clearAllAccounts();
+  showClearAllConfirm.value = false;
+}
+
+const showResetConfirm = ref(false);
+function resetPortfolio() {
+  portfolio.clearAllAccounts();
+  assumptions.resetToDefaults();
+  showResetConfirm.value = false;
 }
 
 // Which cards are expanded (open). Several can be open at once.
@@ -66,21 +76,23 @@ function closeAccountModal(createdAccountId?: string) {
 </script>
 
 <template>
-  <div>
+  <div class="space-y-12">
     <div v-if="showFullView">
       <div class="flex items-center justify-between mb-4">
-        <BodySectionHeader>Portfolio</BodySectionHeader>
-        <SecondaryButton
-          label="Portfolio Assumptions"
-          aria-label="Edit portfolio assumptions"
-          @click="showAssumptionsModal = true"
-        >
-          <template #icon>
-            <PencilIcon style="width: 14px; height: 14px" />
-          </template>
-        </SecondaryButton>
+        <BodySectionHeader>Context</BodySectionHeader>
+        <div class="flex items-center gap-2">
+          <SecondaryButton rounded aria-label="Edit portfolio assumptions" @click="showAssumptionsModal = true">
+            <template #icon>
+              <PencilIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+          <SecondaryButton rounded aria-label="Reset portfolio" @click="showResetConfirm = true">
+            <template #icon>
+              <RefreshIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+        </div>
       </div>
-      <PortfolioSummary />
     </div>
 
     <div v-if="!showFullView" class="grid gap-4 sm:grid-cols-2">
@@ -99,7 +111,7 @@ function closeAccountModal(createdAccountId?: string) {
           <CheckIcon v-if="assumptions.isDescribed" style="width: 14px; height: 14px" />
           <template v-else>1</template>
         </div>
-        <p class="font-medium">Describe Portfolio</p>
+        <p class="font-medium">Describe Context</p>
         <p class="text-sm text-gray-500">
           Shared assumptions like income, age, and life expectancy — used by every account.
         </p>
@@ -140,20 +152,16 @@ function closeAccountModal(createdAccountId?: string) {
       <div class="flex items-center justify-between mb-4">
         <BodySectionHeader>Accounts</BodySectionHeader>
         <div class="flex items-center gap-2">
-          <SecondaryButton
-            label="Clear All"
-            aria-label="Clear all accounts"
-            @click="clearAll"
-          >
+          <SecondaryButton rounded aria-label="Add account" @click="addAccount">
+            <template #icon>
+              <PlusIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+          <SecondaryButton rounded aria-label="Clear all accounts" @click="showClearAllConfirm = true">
             <template #icon>
               <TrashIcon style="width: 14px; height: 14px" />
             </template>
           </SecondaryButton>
-          <Button rounded aria-label="Add account" @click="addAccount">
-            <template #icon>
-              <PlusIcon />
-            </template>
-          </Button>
         </div>
       </div>
 
@@ -170,12 +178,36 @@ function closeAccountModal(createdAccountId?: string) {
       </div>
     </div>
 
+    <div v-if="showFullView">
+      <BodySectionHeader>Portfolio</BodySectionHeader>
+      <PortfolioSummary />
+      <PortfolioResultsPanel />
+    </div>
+
     <PortfolioAssumptionsModal v-if="showAssumptionsModal" @close="showAssumptionsModal = false" />
 
     <AccountFormModal
       v-if="showAccountModal"
       :accountId="editingAccountId ?? undefined"
       @close="closeAccountModal"
+    />
+
+    <ConfirmModal
+      v-if="showClearAllConfirm"
+      title="Clear All Accounts?"
+      message="This removes every account in your portfolio. This can't be undone."
+      confirm-label="Clear All"
+      @confirm="clearAllAccounts"
+      @cancel="showClearAllConfirm = false"
+    />
+
+    <ConfirmModal
+      v-if="showResetConfirm"
+      title="Reset Portfolio?"
+      message="This clears every account and all portfolio assumptions, starting the app over from scratch. This can't be undone."
+      confirm-label="Reset"
+      @confirm="resetPortfolio"
+      @cancel="showResetConfirm = false"
     />
   </div>
 </template>

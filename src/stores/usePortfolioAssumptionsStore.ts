@@ -100,6 +100,24 @@ function definePortfolioAssumptionsStore(id: string, persist: boolean) {
       isDescribed.value = true;
     }
 
+    // Resets every field to its initial default, including `isDescribed` —
+    // used by the "start over" action, which also clears every account (see
+    // usePortfolioStore.clearAllAccounts).
+    function resetToDefaults() {
+      isDescribed.value = false;
+      annualIncome.value = 100000;
+      annualRaises.value = 1;
+      ageToday.value = 25;
+      lifeExpectancy.value = 90;
+      annualInflation.value = 2.5;
+      retirementAge.value = 60;
+      incomeReplacementBridge.value = 30;
+      incomeReplacementGoGo.value = 125;
+      incomeReplacementSlowGo.value = 100;
+      incomeReplacementNoGo.value = 75;
+      overrideRetirementBoundaries.value = null;
+    }
+
     return {
       isDescribed,
       annualIncome,
@@ -118,6 +136,7 @@ function definePortfolioAssumptionsStore(id: string, persist: boolean) {
       yearsInSlowGo,
       yearsInNoGo,
       markDescribed,
+      resetToDefaults,
     };
   }, persist ? { persist: true } : {});
 }
