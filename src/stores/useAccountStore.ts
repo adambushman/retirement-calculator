@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
 
 import type { AnnualProjection } from '@/composeables/useProjections';
-import { computeAccountProjection } from '@/composeables/useAccountProjection';
+import { usePortfolioSimulation } from '@/composeables/usePortfolioSimulation';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { STAGE_PRE_RETIREMENT, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
 
@@ -70,7 +70,7 @@ function defineAccountStore(id: string, persist: boolean) {
 
   // How many years this account actually spends contributing: it stops at
   // whichever comes first, its own withdrawal start age or the portfolio's
-  // Retirement Age (see computeAccountProjection's contributingCutoffAge).
+  // Retirement Age (see computePortfolioSimulation's contributingCutoffAge).
   const yearsUntilRetirement = computed(() =>
     Math.min(withdrawalStartAge.value, retirementAge.value) - ageToday.value
   );
@@ -112,31 +112,13 @@ function defineAccountStore(id: string, persist: boolean) {
 
   // The shared, year-by-year timeline engine — see useAccountProjection.ts
   // for how contributing/dormant/Bridge/Go-Go/Slow-Go/No-Go are determined
-  // per year from this account's own fields plus the portfolio assumptions.
-  const futureProjection = computed(() => computeAccountProjection(
-    {
-      currentBalance: currentBalance.value,
-      growthRatePreRetirement: growthRatePreRetirement.value,
-      growthRateIntraRetirement: growthRateIntraRetirement.value,
-      contributionMode: contributionMode.value,
-      firstMonthlyContribution: firstMonthlyContribution.value,
-      withdrawalStartAge: withdrawalStartAge.value,
-      withdrawalShare: withdrawalShare.value,
-    },
-    {
-      ageToday: ageToday.value,
-      lifeExpectancy: lifeExpectancy.value,
-      retirementAge: retirementAge.value,
-      annualIncome: annualIncome.value,
-      annualRaises: annualRaises.value,
-      retirementBoundaries: retirementBoundaries.value,
-      incomeReplacementBridge: incomeReplacementBridge.value,
-      incomeReplacementGoGo: incomeReplacementGoGo.value,
-      incomeReplacementSlowGo: incomeReplacementSlowGo.value,
-      incomeReplacementNoGo: incomeReplacementNoGo.value,
-      annualInflation: annualInflation.value,
-    }
-  ));
+  // per year, and usePortfolioSimulation.ts for how every account's
+  // withdrawal is run jointly (so a depleted sibling's share gets picked up
+  // by this account instead of just going unmet). Called lazily here, rather
+  // than at store setup time, so a self-reference back to this same account
+  // (as one of the portfolio's accounts) resolves to the already-registered
+  // store instead of recursing into its own construction.
+  const futureProjection = computed(() => usePortfolioSimulation().projectionFor(id));
 
   const projectionGraph = computed(() => {
     const projectionData = futureProjection.value?.[inflationPerspective.value];
@@ -303,6 +285,11 @@ function defineAccountStore(id: string, persist: boolean) {
     monthlyIncome,
     firstMonthlyContribution,
     setContributionMode,
+    // Exposed (in addition to projectionGraph, which is tied to this
+    // account's own inflationPerspective) so a portfolio-wide aggregate can
+    // pick raw or inflation-adjusted independently of any one account's own
+    // toggle — see usePortfolioProjection.ts.
+    futureProjection,
     projectionGraph,
     avgMonthlyWithdrawal,
     futureProjectionResults,

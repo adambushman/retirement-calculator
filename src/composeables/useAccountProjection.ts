@@ -27,12 +27,10 @@ import {
 //     up under the right stage in totals/summaries.
 //   - Go-Go/Slow-Go/No-Go — this account is actively withdrawing.
 //
-// Stage 3 note: `withdrawalShare` is applied directly against the portfolio's
-// shared income-replacement target, but Bridge/dormant boundaries are still
-// evaluated using *this account's own* withdrawal start age rather than the
-// portfolio-wide earliest one — true cross-account coordination (so an
-// account isn't dormant if a sibling has already triggered the portfolio
-// into its withdrawal phase) is a later stage.
+// `withdrawalShare` is applied against the portfolio's shared
+// income-replacement target for whichever stage an account is withdrawing
+// in, but Bridge/dormant boundaries are evaluated using *this account's own*
+// withdrawal start age rather than a portfolio-wide one.
 export type ContributionMode = 'percent' | 'dollar';
 
 export interface AccountProjectionInput {
@@ -76,10 +74,31 @@ function replacementRateFor(stage: StageName, assumptions: PortfolioProjectionAs
   }
 }
 
-export function computeAccountProjection(
-  account: AccountProjectionInput,
+interface AccountState {
+  id: string;
+  input: AccountProjectionInput;
+  balance: number;
+  contributionMonthly: number;
+  contributingCutoffAge: number;
+  rows: AnnualProjection[];
+}
+
+/**
+ * Runs every account's year-by-year timeline together, in lockstep, so that
+ * a depleted account's share of a stage's target income-replacement dollar
+ * amount can be picked up by its still-solvent siblings instead of simply
+ * going unmet (e.g. a 50/50 split between two accounts becomes 100% from the
+ * survivor once the other hits zero). Each account's own contributing/
+ * dormant/Bridge/withdrawing phase is still driven purely by its own ages;
+ * only the withdrawal amount *within* the withdrawing phase is redistributed,
+ * and only among accounts that are already unlocked this year — an account
+ * that hasn't reached its own withdrawal start age yet is untouched by this
+ * (see usePortfolioCoverage's coverage %, which surfaces that separate gap).
+ */
+export function computePortfolioSimulation(
+  accounts: (AccountProjectionInput & { id: string })[],
   assumptions: PortfolioProjectionAssumptions
-): FullProjection {
+): Map<string, FullProjection> {
   const yearsUntilRetirement = assumptions.retirementAge - assumptions.ageToday;
   // Income in the portfolio's final working year: compound the annual raise
   // once per completed working year (year 1 is worked at today's salary, no
@@ -90,64 +109,114 @@ export function computeAccountProjection(
   const monthlyIncomeAtRetirement = annualIncomeAtRetirement / 12;
 
   const totalYears = assumptions.lifeExpectancy - assumptions.ageToday;
-  // This account stops contributing at whichever comes first: its own
-  // withdrawal start age, or the portfolio-wide Retirement Age.
-  const contributingCutoffAge = Math.min(account.withdrawalStartAge, assumptions.retirementAge);
 
-  const raw: AnnualProjection[] = [];
-  let balance = account.currentBalance;
-  let contributionMonthly = account.firstMonthlyContribution;
+  const state: AccountState[] = accounts.map((input) => ({
+    id: input.id,
+    input,
+    balance: input.currentBalance,
+    contributionMonthly: input.firstMonthlyContribution,
+    // This account stops contributing at whichever comes first: its own
+    // withdrawal start age, or the portfolio-wide Retirement Age.
+    contributingCutoffAge: Math.min(input.withdrawalStartAge, assumptions.retirementAge),
+    rows: [],
+  }));
 
   for (let i = 0; i < totalYears; i++) {
     const age = assumptions.ageToday + i;
-    const startBalance = balance;
 
-    let stage: StageName;
-    let monthlyFlow: number;
-    let growthRate: number;
+    // Classify each account's phase this year from its own ages only.
+    const stageById = new Map<string, StageName>();
+    const withdrawing: AccountState[] = [];
 
-    if (age < contributingCutoffAge) {
-      stage = STAGE_PRE_RETIREMENT;
-      monthlyFlow = contributionMonthly;
-      growthRate = account.growthRatePreRetirement;
-    } else if (age < account.withdrawalStartAge) {
-      // Dormant: the portfolio has retired, but this account isn't unlocked
-      // yet — no flow, but still labeled by whatever stage its age falls in.
-      stage = withdrawalStageForAge(age, assumptions.retirementBoundaries);
-      monthlyFlow = 0;
-      growthRate = account.growthRateIntraRetirement;
-    } else {
-      stage = age < assumptions.retirementAge
-        ? STAGE_BRIDGE
-        : withdrawalStageForAge(age, assumptions.retirementBoundaries);
-      const rate = replacementRateFor(stage, assumptions);
-      monthlyFlow = -(monthlyIncomeAtRetirement * (rate / 100) * (account.withdrawalShare / 100));
-      growthRate = account.growthRateIntraRetirement;
+    for (const s of state) {
+      if (age < s.contributingCutoffAge) {
+        stageById.set(s.id, STAGE_PRE_RETIREMENT);
+      } else if (age < s.input.withdrawalStartAge) {
+        // Dormant: the portfolio has retired, but this account isn't
+        // unlocked yet — no flow, but still labeled by whatever stage its
+        // age falls in.
+        stageById.set(s.id, withdrawalStageForAge(age, assumptions.retirementBoundaries));
+      } else {
+        stageById.set(s.id, age < assumptions.retirementAge
+          ? STAGE_BRIDGE
+          : withdrawalStageForAge(age, assumptions.retirementBoundaries));
+        withdrawing.push(s);
+      }
     }
 
-    const annualFlow = monthlyFlow * 12;
-    balance += annualFlow;
-    balance *= 1 + growthRate / 100;
-    const endBalance = balance;
+    // Every currently-withdrawing account shares the same stage this year —
+    // Bridge only applies before Retirement Age (when no post-retirement
+    // stage is possible yet), and after Retirement Age the stage is
+    // boundary-based on age alone — so one target/rate applies to the whole
+    // pool of already-unlocked accounts.
+    let targetAnnualFull = 0;
+    let originalPoolShareSum = 0;
+    let activeShareSum = 0;
+    if (withdrawing.length > 0) {
+      const stage = stageById.get(withdrawing[0]!.id)!;
+      const rate = replacementRateFor(stage, assumptions);
+      targetAnnualFull = monthlyIncomeAtRetirement * (rate / 100) * 12;
+      for (const s of withdrawing) {
+        originalPoolShareSum += s.input.withdrawalShare;
+        if (s.balance > 0) activeShareSum += s.input.withdrawalShare;
+      }
+    }
 
-    raw.push({
-      year: i + 1,
-      stage,
-      startBalance,
-      endBalance,
-      annualFlow,
-      totalGrowth: endBalance - startBalance - annualFlow,
-    });
+    for (const s of state) {
+      const stage = stageById.get(s.id)!;
+      const startBalance = s.balance;
+      let annualFlow = 0;
+      let growthRate: number;
 
-    // Contributions grow with raises (percent-of-income mode only) each year
-    // they're still being made; a flat-dollar contribution stays fixed.
-    if (age < contributingCutoffAge && account.contributionMode === 'percent') {
-      contributionMonthly *= 1 + assumptions.annualRaises / 100;
+      if (age < s.contributingCutoffAge) {
+        annualFlow = s.contributionMonthly * 12;
+        growthRate = s.input.growthRatePreRetirement;
+      } else if (age < s.input.withdrawalStartAge) {
+        annualFlow = 0;
+        growthRate = s.input.growthRateIntraRetirement;
+      } else {
+        growthRate = s.input.growthRateIntraRetirement;
+        // Redistribute this stage's target across whichever already-unlocked
+        // accounts are still solvent, weighted by their own share — a
+        // depleted account (or one with no remaining active peers) simply
+        // contributes zero.
+        if (s.balance > 0 && activeShareSum > 0) {
+          const effectiveShare = (s.input.withdrawalShare / activeShareSum) * (originalPoolShareSum / 100);
+          annualFlow = -(targetAnnualFull * effectiveShare);
+          // Clamp a withdrawal that would overdraw the account: it can only
+          // take what's left, ending the year at exactly zero.
+          if (s.balance + annualFlow < 0) annualFlow = -s.balance;
+        }
+      }
+
+      s.balance += annualFlow;
+      s.balance *= 1 + growthRate / 100;
+      if (s.balance < 0) s.balance = 0;
+      const endBalance = s.balance;
+
+      s.rows.push({
+        year: i + 1,
+        stage,
+        startBalance,
+        endBalance,
+        annualFlow,
+        totalGrowth: endBalance - startBalance - annualFlow,
+      });
+
+      // Contributions grow with raises (percent-of-income mode only) each
+      // year they're still being made; a flat-dollar contribution is fixed.
+      if (age < s.contributingCutoffAge && s.input.contributionMode === 'percent') {
+        s.contributionMonthly *= 1 + assumptions.annualRaises / 100;
+      }
     }
   }
 
-  return {
-    raw,
-    'inflation-adjusted': applyInflationAdjustment(raw, assumptions.annualInflation),
-  };
+  const result = new Map<string, FullProjection>();
+  for (const s of state) {
+    result.set(s.id, {
+      raw: s.rows,
+      'inflation-adjusted': applyInflationAdjustment(s.rows, assumptions.annualInflation),
+    });
+  }
+  return result;
 }
