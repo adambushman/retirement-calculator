@@ -4,7 +4,7 @@ import { ref, computed, watch } from "vue";
 import type { AnnualProjection } from '@/composeables/useProjections';
 import { usePortfolioSimulation } from '@/composeables/usePortfolioSimulation';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
-import { STAGE_PRE_RETIREMENT, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
+import { STAGE_ACCUMULATION, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
 
 // Pinia stores are normally singletons keyed by a fixed id. To model several
 // independent accounts with the exact same shape (inputs, projection engine,
@@ -58,8 +58,8 @@ function defineAccountStore(id: string, persist: boolean) {
   const contributionMode = ref<ContributionMode>('percent');
   const savingsRate = ref<number>(15);
   const contributionAmount = ref<number>(500);
-  const growthRatePreRetirement = ref<number>(8);
-  const growthRateIntraRetirement = ref<number>(4);
+  const growthRatePreRetirement = ref<number>(8.5);
+  const growthRateIntraRetirement = ref<number>(5.5);
   const inflationAdjChoice = ref<boolean>(false);
 
 
@@ -163,9 +163,9 @@ function defineAccountStore(id: string, persist: boolean) {
       arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.totalGrowth ?? 0), 0);
 
     return {
-      finalPreRetirementBalance: finalBalance(STAGE_PRE_RETIREMENT),
-      totalPreRetirementFlow: totalFlow(STAGE_PRE_RETIREMENT),
-      totalPreRetirementGrowth: totalGrowth(STAGE_PRE_RETIREMENT),
+      finalPreRetirementBalance: finalBalance(STAGE_ACCUMULATION),
+      totalPreRetirementFlow: totalFlow(STAGE_ACCUMULATION),
+      totalPreRetirementGrowth: totalGrowth(STAGE_ACCUMULATION),
       finalBridgeBalance: finalBalance(STAGE_BRIDGE),
       totalBridgeFlow: totalFlow(STAGE_BRIDGE),
       totalBridgeGrowth: totalGrowth(STAGE_BRIDGE),
@@ -202,7 +202,7 @@ function defineAccountStore(id: string, persist: boolean) {
       return 0
     }
 
-    const retirement = arr.filter(a => a.stage !== STAGE_PRE_RETIREMENT);
+    const retirement = arr.filter(a => a.stage !== STAGE_ACCUMULATION);
     if (retirement.length === 0) return 0;
     return retirement.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0) / retirement.length / 12;
   });

@@ -1,7 +1,7 @@
 import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
 import { applyInflationAdjustment } from '@/composeables/useProjections';
 import {
-  STAGE_PRE_RETIREMENT,
+  STAGE_ACCUMULATION,
   STAGE_BRIDGE,
   STAGE_GO_GO,
   STAGE_SLOW_GO,
@@ -15,21 +15,32 @@ import {
 // ages (Retirement Age, the Go/Slow/No-Go boundaries) and classified into
 // whichever of five states applies that year:
 //
-//   - contributing   (Pre-Retirement) — before this account's own start age
-//     and before the portfolio's Retirement Age, whichever comes first.
+//   - Accumulation   — before this account's own withdrawal start age. The
+//     account is untouched and compounds at its growth-phase rate. Whether
+//     the portfolio has retired yet only decides whether *contributions* are
+//     still arriving (see contributingCutoffAge); it does not end this stage.
 //   - Bridge         — this account has started withdrawing early (its own
 //     start age is before Retirement Age), so it partially replaces income
 //     while other accounts/income may still be active.
-//   - dormant        — Retirement Age has passed (no one is earning/
-//     contributing anymore) but this account's own start age hasn't arrived
-//     yet, so it just grows untouched. Labeled with whichever of
-//     Go-Go/Slow-Go/No-Go its age falls in, at zero flow, so it still shows
-//     up under the right stage in totals/summaries.
 //   - Go-Go/Slow-Go/No-Go — this account is actively withdrawing.
+//
+// The two ages are deliberately independent, because they answer different
+// questions:
+//
+//   Retirement Age (portfolio-wide) — when the paycheck stops. It ends
+//     contributions everywhere and starts the Go-Go/Slow-Go/No-Go clock that
+//     sets the income-replacement target.
+//   Withdrawal Start Age (per account) — when *this* account starts being
+//     drawn down. It is the sole boundary between the account's growth-phase
+//     and drawdown-phase rates, and the sole trigger for its withdrawals.
+//
+// So an account can be fully retired-era and still accumulating: no more
+// contributions arriving, but nothing coming out and no reason to de-risk
+// yet either.
 //
 // `withdrawalShare` is applied against the portfolio's shared
 // income-replacement target for whichever stage an account is withdrawing
-// in, but Bridge/dormant boundaries are evaluated using *this account's own*
+// in, but each account's own stage boundaries are evaluated using *its own*
 // withdrawal start age rather than a portfolio-wide one.
 export type ContributionMode = 'percent' | 'dollar';
 
@@ -129,13 +140,9 @@ export function computePortfolioSimulation(
     const withdrawing: AccountState[] = [];
 
     for (const s of state) {
-      if (age < s.contributingCutoffAge) {
-        stageById.set(s.id, STAGE_PRE_RETIREMENT);
-      } else if (age < s.input.withdrawalStartAge) {
-        // Dormant: the portfolio has retired, but this account isn't
-        // unlocked yet — no flow, but still labeled by whatever stage its
-        // age falls in.
-        stageById.set(s.id, withdrawalStageForAge(age, assumptions.retirementBoundaries));
+      if (age < s.input.withdrawalStartAge) {
+        // Still accumulating — whether or not the portfolio has retired.
+        stageById.set(s.id, STAGE_ACCUMULATION);
       } else {
         stageById.set(s.id, age < assumptions.retirementAge
           ? STAGE_BRIDGE
@@ -168,12 +175,13 @@ export function computePortfolioSimulation(
       let annualFlow = 0;
       let growthRate: number;
 
-      if (age < s.contributingCutoffAge) {
-        annualFlow = s.contributionMonthly * 12;
+      if (age < s.input.withdrawalStartAge) {
+        // Contributions stop when the paycheck does, but the account stays in
+        // its growth-phase allocation until it's actually drawn from — so a
+        // retired-but-not-yet-unlocked account keeps compounding at the
+        // growth-phase rate with zero flow.
+        annualFlow = age < s.contributingCutoffAge ? s.contributionMonthly * 12 : 0;
         growthRate = s.input.growthRatePreRetirement;
-      } else if (age < s.input.withdrawalStartAge) {
-        annualFlow = 0;
-        growthRate = s.input.growthRateIntraRetirement;
       } else {
         growthRate = s.input.growthRateIntraRetirement;
         // Redistribute this stage's target across whichever already-unlocked

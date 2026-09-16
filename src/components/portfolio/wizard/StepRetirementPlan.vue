@@ -42,7 +42,7 @@ const store = inject(AccountStoreKey)!;
       <label
       class="block text-sm mb-2 text-gray-400"
       for="intra-retire-growth-input"
-      >Growth Rate (Intra-Retirement)</label>
+      >Growth Rate (During Withdrawals)</label>
       <InputNumber
       v-model.number="store.growthRateIntraRetirement"
       inputId="intra-retire-growth-input"

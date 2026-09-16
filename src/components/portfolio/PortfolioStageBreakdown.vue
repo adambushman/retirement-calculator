@@ -6,7 +6,7 @@ import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsSt
 import { usePortfolioCoverage } from '@/composeables/usePortfolioCoverage';
 import type { StageAggregate } from '@/composeables/usePortfolioProjection';
 import {
-  STAGE_PRE_RETIREMENT,
+  STAGE_ACCUMULATION,
   STAGE_BRIDGE,
   STAGE_GO_GO,
   STAGE_SLOW_GO,
@@ -18,7 +18,7 @@ const props = defineProps<{
 }>();
 
 const assumptions = usePortfolioAssumptionsStore();
-const { bridgeStartAge } = usePortfolioCoverage();
+const { bridgeStartAge, accumulationEndAge } = usePortfolioCoverage();
 
 // Average monthly contribution/withdrawal for a stage: its total flow spread
 // across the months the stage actually spans.
@@ -29,17 +29,18 @@ const aggregateFor = (stage: string) =>
   props.stageAggregates.find((s) => s.stage === stage) ?? { finalBalance: 0, totalFlow: 0, totalGrowth: 0 };
 
 // Go-Go/Slow-Go/No-Go age ranges are already unambiguous (shared portfolio
-// boundaries); Pre-Retirement and Bridge get portfolio-wide ranges too —
-// Pre-Retirement spans the whole working era, Bridge from the earliest
-// account's own start age (see usePortfolioCoverage) to Retirement Age.
+// boundaries); Accumulation and Bridge get portfolio-wide ranges too —
+// Accumulation runs until the last account unlocks (which is Retirement Age
+// unless some account starts later), Bridge from the earliest account's own
+// start age (see usePortfolioCoverage) to Retirement Age.
 const stages = computed(() => {
   const [goGoEndAge, slowGoEndAge] = assumptions.retirementBoundaries;
 
   const list = [
     {
-      stage: STAGE_PRE_RETIREMENT,
-      years: [assumptions.ageToday, assumptions.retirementAge - 1],
-      ...aggregateFor(STAGE_PRE_RETIREMENT),
+      stage: STAGE_ACCUMULATION,
+      years: [assumptions.ageToday, accumulationEndAge.value - 1],
+      ...aggregateFor(STAGE_ACCUMULATION),
     },
   ];
 

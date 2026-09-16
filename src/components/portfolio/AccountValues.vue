@@ -27,13 +27,13 @@ const accountDetailsRows = computed(() => [
 const earningSavingRows = computed(() => [
   { label: 'Account Balance Today', value: dollars(store.currentBalance) },
   { label: 'Savings/Contribution Rate', value: contributionRateLabel.value },
-  { label: 'Growth Rate (Pre-Retirement)', value: `${percent(store.growthRatePreRetirement)}%` },
+  { label: 'Growth Rate (Before Withdrawals)', value: `${percent(store.growthRatePreRetirement)}%` },
 ]);
 
 const retirementPlanRows = computed(() => [
   { label: 'Withdrawal Start Age', value: String(store.withdrawalStartAge) },
   { label: 'Withdrawal Share', value: `${percent(store.withdrawalShare)}%` },
-  { label: 'Growth Rate (Intra-Retirement)', value: `${percent(store.growthRateIntraRetirement)}%` },
+  { label: 'Growth Rate (During Withdrawals)', value: `${percent(store.growthRateIntraRetirement)}%` },
 ]);
 
 const columns = computed(() => [

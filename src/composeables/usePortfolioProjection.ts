@@ -5,7 +5,7 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import {
-  STAGE_PRE_RETIREMENT,
+  STAGE_ACCUMULATION,
   STAGE_BRIDGE,
   STAGE_GO_GO,
   STAGE_SLOW_GO,
@@ -33,7 +33,7 @@ export interface StageAggregate {
 }
 
 const STAGE_ORDER: StageName[] = [
-  STAGE_PRE_RETIREMENT,
+  STAGE_ACCUMULATION,
   STAGE_BRIDGE,
   STAGE_GO_GO,
   STAGE_SLOW_GO,

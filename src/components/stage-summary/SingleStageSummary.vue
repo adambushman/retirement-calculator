@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const stageDescription: Record<StageName, string> = {
-  'Pre-Retirement': 'Active working years when you\'re building savings and preparing financially for retirement.',
+  'Accumulation': 'Everything before this account\'s withdrawal start age — contributions arrive while you\'re still working, and the balance keeps compounding untouched even after you retire, right up until the first withdrawal.',
   'Bridge': 'The gap between an account\'s own withdrawal start age and full retirement, when some accounts may already be drawn on to partially replace income.',
   'Go-Go Years': 'The early stage of retirement when you\'re healthiest, most active, and typically spending more on travel and lifestyle.',
   'Slow-Go Years': 'The middle stage of retirement when activity levels naturally decline and spending begins to moderate.',

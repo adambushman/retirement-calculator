@@ -84,7 +84,7 @@ const contributionHelperText = computed(() => {
       <label
       class="block text-sm mb-2 text-gray-400"
       for="pre-retire-growth-input"
-      >Growth Rate (Pre-Retirement)</label>
+      >Growth Rate (Before Withdrawals)</label>
       <InputNumber
       v-model.number="store.growthRatePreRetirement"
       inputId="pre-retire-growth-input"

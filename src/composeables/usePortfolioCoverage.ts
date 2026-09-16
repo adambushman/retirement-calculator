@@ -47,6 +47,17 @@ export function usePortfolioCoverage() {
     return earlyStarts.length > 0 ? Math.min(...earlyStarts) : null;
   });
 
+  // When the last account finally starts withdrawing — i.e. when the portfolio
+  // has no money still accumulating anywhere. Usually just Retirement Age, but
+  // an account that unlocks later keeps compounding untouched past it, so the
+  // Accumulation stage can outlast the working years.
+  const accumulationEndAge = computed<number>(() => {
+    const starts = accountStores.value.map((s) => s.withdrawalStartAge);
+    return starts.length > 0
+      ? Math.max(assumptions.retirementAge, ...starts)
+      : assumptions.retirementAge;
+  });
+
   const stageCoverage = computed<StageCoverage[]>(() => {
     const shareOfAccountsUnlockedBefore = (endAge: number) =>
       accountStores.value
@@ -63,5 +74,5 @@ export function usePortfolioCoverage() {
     ];
   });
 
-  return { bridgeStartAge, stageCoverage };
+  return { bridgeStartAge, accumulationEndAge, stageCoverage };
 }
