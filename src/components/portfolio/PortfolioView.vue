@@ -10,7 +10,10 @@ import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
 import BodySectionHeader from '@/components/BodySectionHeader.vue';
 import ConfirmModal from '@/components/ConfirmModal.vue';
+import ContextSummary from '@/components/portfolio/ContextSummary.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
+import RetirementPlanInputs from '@/components/portfolio/RetirementPlanInputs.vue';
+import PortfolioCoverageLegend from '@/components/portfolio/PortfolioCoverageLegend.vue';
 import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
@@ -93,6 +96,7 @@ function closeAccountModal(createdAccountId?: string) {
           </SecondaryButton>
         </div>
       </div>
+      <ContextSummary />
     </div>
 
     <div v-if="!showFullView" class="grid gap-4 sm:grid-cols-2">
@@ -181,6 +185,16 @@ function closeAccountModal(createdAccountId?: string) {
     <div v-if="showFullView">
       <BodySectionHeader>Portfolio</BodySectionHeader>
       <PortfolioSummary />
+    </div>
+
+    <div v-if="showFullView">
+      <BodySectionHeader>Retirement Plan</BodySectionHeader>
+      <RetirementPlanInputs />
+    </div>
+
+    <div v-if="showFullView">
+      <BodySectionHeader>Summary</BodySectionHeader>
+      <PortfolioCoverageLegend />
       <PortfolioResultsPanel />
     </div>
 
