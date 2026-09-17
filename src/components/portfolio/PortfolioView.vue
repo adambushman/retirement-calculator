@@ -81,8 +81,14 @@ function closeAccountModal(createdAccountId?: string) {
 <template>
   <div class="space-y-12">
     <div v-if="showFullView">
-      <div class="flex items-center justify-between mb-4">
-        <BodySectionHeader>Context</BodySectionHeader>
+      <div class="flex items-start justify-between mb-4">
+        <BodySectionHeader>
+          Context
+          <template #subtitle>
+            The essentials about you — income, age, and life expectancy — that every other section
+            builds on.
+          </template>
+        </BodySectionHeader>
         <div class="flex items-center gap-2">
           <SecondaryButton rounded aria-label="Edit portfolio assumptions" @click="showAssumptionsModal = true">
             <template #icon>
@@ -153,8 +159,14 @@ function closeAccountModal(createdAccountId?: string) {
     </div>
 
     <div v-else>
-      <div class="flex items-center justify-between mb-4">
-        <BodySectionHeader>Accounts</BodySectionHeader>
+      <div class="flex items-start justify-between mb-4">
+        <BodySectionHeader>
+          Accounts
+          <template #subtitle>
+            The accounts that'll fund your retirement — Traditional, Roth, and Brokerage today,
+            with more account types (like Social Security and pensions) on the way.
+          </template>
+        </BodySectionHeader>
         <div class="flex items-center gap-2">
           <SecondaryButton rounded aria-label="Add account" @click="addAccount">
             <template #icon>
@@ -183,17 +195,32 @@ function closeAccountModal(createdAccountId?: string) {
     </div>
 
     <div v-if="showFullView">
-      <BodySectionHeader>Portfolio</BodySectionHeader>
+      <BodySectionHeader>
+        Portfolio
+        <template #subtitle>
+          How your accounts add up today, and where they're projected to land by first
+          withdrawal. Not a retirement plan — just some conservative numbers.
+        </template>
+      </BodySectionHeader>
       <PortfolioSummary />
     </div>
 
     <div v-if="showFullView">
-      <BodySectionHeader>Retirement Plan</BodySectionHeader>
+      <BodySectionHeader>
+        Retirement Plan
+        <template #subtitle>
+          Where you start shaping what retirement actually looks like — when it begins, how long
+          each stage lasts, and how much you'll draw down.
+        </template>
+      </BodySectionHeader>
       <RetirementPlanInputs />
     </div>
 
     <div v-if="showFullView">
-      <BodySectionHeader>Summary</BodySectionHeader>
+      <BodySectionHeader>
+        Summary
+        <template #subtitle>The rest of your story — from today through every stage of retirement.</template>
+      </BodySectionHeader>
       <PortfolioCoverageLegend />
       <PortfolioResultsPanel />
     </div>
