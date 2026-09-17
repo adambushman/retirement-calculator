@@ -41,9 +41,9 @@ const naiveWithdrawalAgePercent = computed(() => {
         <h2 class="text-lg lg:text-2xl font-bold">{{ dollars(store.naiveBalanceAtTargetAge) }}</h2>
         <p class="text-xs lg:text-sm text-gray-500">Balance at Age {{ age(store.naiveTargetAge) }}</p>
 
-        <div v-if="store.accountType === 'brokerage'" class="relative mt-6 pt-4 max-w-[220px] mx-auto">
+        <div v-if="store.accountType === 'brokerage'" class="relative mt-6 pt-6 max-w-[220px] mx-auto">
           <span
-            class="absolute top-0 -translate-x-1/2 text-xs font-medium text-gray-300 whitespace-nowrap"
+            class="absolute top-0 -translate-x-1/2 leading-none text-sm font-semibold text-primary whitespace-nowrap"
             :style="{ left: `${naiveWithdrawalAgePercent}%` }"
           >
             {{ age(store.naiveWithdrawalAge) }}
