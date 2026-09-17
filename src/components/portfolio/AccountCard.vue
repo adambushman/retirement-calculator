@@ -9,6 +9,7 @@ import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
+import AccountAttributes from '@/components/portfolio/AccountAttributes.vue';
 import AccountValues from '@/components/portfolio/AccountValues.vue';
 import AccountGrowthSummary from '@/components/portfolio/AccountGrowthSummary.vue';
 
@@ -170,7 +171,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
     </div>
 
     <div v-if="!collapsed" class="space-y-6">
-      <AccountValues class="w-full mt-6" />
+      <AccountAttributes class="w-full mt-6" />
+      <AccountValues class="w-full" />
       <AccountGrowthSummary class="w-full" />
     </div>
   </Panel>
