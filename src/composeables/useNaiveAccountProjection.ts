@@ -11,11 +11,15 @@
 // answers a self-contained question that needs nothing from later sections:
 // "if I start drawing on this account as soon as I'm legally able to
 // (Penalty-Free Withdrawal Age for Traditional/Roth, or a chosen age for
-// Brokerage, which has no such rule), what would the balance be then, and
-// how much could it pay out monthly until life expectancy?"
+// Brokerage, which has no such rule), what would the balance be then?"
 //
-// Both figures are closed-form (no year-by-year or month-by-month loop):
-// the target age can land on a half-year (59.5), and a plain compound-growth/
+// A monthly-payout figure used to live here too, but it required assuming a
+// growth rate straight through retirement — an assumption invisible to the
+// user and easy to mistake for a sober one, so it was dropped in favor of
+// just the balance itself.
+//
+// The figure is closed-form (no year-by-year or month-by-month loop): the
+// target age can land on a half-year (59.5), and a plain compound-growth/
 // annuity formula handles a fractional number of years natively, whereas a
 // whole-year loop would need special-casing for the leftover half year.
 // Contribution raises are intentionally ignored (flat monthly contribution
@@ -46,24 +50,4 @@ export function naiveAccumulate(
     rate === 0 ? annualContribution * clampedYears : annualContribution * ((growthFactor - 1) / rate);
 
   return balanceGrowth + contributionGrowth;
-}
-
-/**
- * The level monthly amount a balance could pay out, starting immediately and
- * continuing for `years` (may be fractional), fully depleting it by the end,
- * while the remainder keeps compounding at `annualGrowthRatePercent`.
- */
-export function naiveMonthlyWithdrawal(
-  balance: number,
-  annualGrowthRatePercent: number,
-  years: number
-): number {
-  const clampedYears = Math.max(0, years);
-  if (clampedYears === 0) return 0;
-
-  const rate = annualGrowthRatePercent / 100;
-  const annualWithdrawal =
-    rate === 0 ? balance / clampedYears : (balance * rate) / (1 - Math.pow(1 + rate, -clampedYears));
-
-  return annualWithdrawal / 12;
 }

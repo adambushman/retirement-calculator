@@ -19,15 +19,16 @@ const contributionRateLabel = computed(() =>
     : `${percent(store.savingsRate)}%`
 );
 
+// Which income the percent-of-income rate is measured against, shown only
+// in percent mode — a flat dollar contribution isn't tied to any stream.
+const contributionSourceLabel = computed(() => {
+  if (store.contributionMode !== 'percent') return null;
+  return store.referencedIncomeStream?.name ?? 'Total Annual Income';
+});
+
 const accountDetailsRows = computed(() => [
   { label: 'Account Type', value: accountTypeLabel.value },
   { label: 'Account Owner', value: store.ownerName || 'Unassigned' },
-]);
-
-const earningSavingRows = computed(() => [
-  { label: 'Account Balance Today', value: dollars(store.currentBalance) },
-  { label: 'Savings/Contribution Rate', value: contributionRateLabel.value },
-  { label: 'Growth Rate (Before Withdrawals)', value: `${percent(store.growthRatePreRetirement)}%` },
 ]);
 
 // Withdrawal Start Age, Withdrawal Share, and Growth Rate (During
@@ -38,7 +39,6 @@ const earningSavingRows = computed(() => [
 // account.
 const columns = computed(() => [
   { title: 'Account Details', rows: accountDetailsRows.value },
-  { title: 'Earning & Saving', rows: earningSavingRows.value },
 ]);
 </script>
 
@@ -52,6 +52,38 @@ const columns = computed(() => [
             <tr v-for="row in column.rows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
               <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
               <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Earning &amp; Saving</h4>
+        <table class="w-full text-sm border-collapse">
+          <tbody>
+            <tr class="border-b border-surface-100 dark:border-surface-800">
+              <td class="py-1.5 pr-2 text-gray-400 align-top">Account Balance Today</td>
+              <td class="py-1.5 font-medium text-right">{{ dollars(store.currentBalance) }}</td>
+            </tr>
+            <tr class="border-b border-surface-100 dark:border-surface-800">
+              <td class="py-1.5 pr-2 text-gray-400 align-top">Savings/Contribution Rate</td>
+              <td class="py-1.5 font-medium text-right">
+                {{ contributionRateLabel }}
+                <span
+                  v-if="contributionSourceLabel"
+                  class="block text-xs font-normal"
+                  :class="store.isIncomeStreamMissing ? 'text-amber-500' : 'text-gray-400'"
+                  :title="store.isIncomeStreamMissing
+                    ? 'Previously selected income was removed — using Total for now.'
+                    : undefined"
+                >
+                  of {{ contributionSourceLabel }}
+                </span>
+              </td>
+            </tr>
+            <tr class="border-b border-surface-100 dark:border-surface-800 last:border-0">
+              <td class="py-1.5 pr-2 text-gray-400 align-top">Growth Rate (Before Withdrawals)</td>
+              <td class="py-1.5 font-medium text-right">{{ percent(store.growthRatePreRetirement) }}%</td>
             </tr>
           </tbody>
         </table>

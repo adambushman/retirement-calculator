@@ -42,6 +42,7 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
         growthRateIntraRetirement: store.growthRateIntraRetirement,
         contributionMode: store.contributionMode,
         firstMonthlyContribution: store.firstMonthlyContribution,
+        contributionRaises: store.contributionRaises,
         withdrawalStartAge: store.withdrawalStartAge,
         withdrawalShare: store.withdrawalShare,
       };

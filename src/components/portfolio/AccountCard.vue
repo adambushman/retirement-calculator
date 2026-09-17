@@ -3,6 +3,7 @@ import { ref, computed, provide, onBeforeUnmount } from 'vue';
 import { format } from 'd3-format';
 import ChevronDownIcon from '@primevue/icons/chevrondown';
 import ChevronUpIcon from '@primevue/icons/chevronup';
+import ExclamationTriangleIcon from '@primevue/icons/exclamationtriangle';
 
 import Panel from '@/volt/Panel.vue';
 import { useAccountStore } from '@/stores/useAccountStore';
@@ -40,6 +41,14 @@ const accountTypeIcon = computed(() => ACCOUNT_TYPE_ICONS[store.accountType]);
 // — this line is a quick sense of scale, not a precise figure.
 const compactDollars = format('$.3~s');
 const compactAge = format('.1~f');
+
+// Only actually matters in percent mode — a stale reference sitting unused
+// while in dollar mode has no effect on the projection, so it isn't worth
+// flagging. Shown in the header (not just inside the expanded Assumptions
+// section) so it's visible even while the card is collapsed.
+const showIncomeStreamWarning = computed(
+  () => store.contributionMode === 'percent' && store.isIncomeStreamMissing
+);
 
 function startRename() {
   draftName.value = props.name;
@@ -118,6 +127,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 
     <template #icons>
       <div class="flex items-center gap-1">
+        <span
+          v-if="showIncomeStreamWarning"
+          class="p-1.5 text-amber-500"
+          title="This account's income stream was removed — using Total Annual Income for now."
+        >
+          <ExclamationTriangleIcon style="width: 14px; height: 14px" />
+        </span>
         <div ref="menuRoot" class="relative">
           <button
             type="button"

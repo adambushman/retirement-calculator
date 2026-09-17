@@ -33,3 +33,25 @@ export function applyInflationAdjustment(
     };
   });
 }
+
+/**
+ * The balance a year-by-year projection shows at a given age (before that
+ * age, or with no projection yet, the account's own current balance — it
+ * hasn't started moving). Shared by an account's own balanceAtWithdrawalStart
+ * (using its own inflation perspective) and any portfolio-wide summary that
+ * needs the same figure under an externally chosen perspective instead (see
+ * PortfolioSummary.vue's own inflation toggle).
+ */
+export function balanceAtAge(
+  rows: AnnualProjection[] | null | undefined,
+  ageToday: number,
+  targetAge: number,
+  currentBalance: number
+): number {
+  if (!rows || rows.length === 0) return currentBalance;
+
+  const index = targetAge - ageToday;
+  if (index <= 0) return currentBalance;
+  if (index >= rows.length) return rows[rows.length - 1]!.endBalance;
+  return rows[index]!.startBalance;
+}

@@ -1,12 +1,12 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
 
-import type { AnnualProjection } from '@/composeables/useProjections';
+import { balanceAtAge, type AnnualProjection } from '@/composeables/useProjections';
 import { usePortfolioSimulation } from '@/composeables/usePortfolioSimulation';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { STAGE_ACCUMULATION, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
 import { ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
-import { naiveAccumulate, naiveMonthlyWithdrawal as computeNaiveMonthlyWithdrawal } from '@/composeables/useNaiveAccountProjection';
+import { naiveAccumulate } from '@/composeables/useNaiveAccountProjection';
 
 // Pinia stores are normally singletons keyed by a fixed id. To model several
 // independent accounts with the exact same shape (inputs, projection engine,
@@ -69,6 +69,20 @@ function defineAccountStore(id: string, persist: boolean) {
   // Roth, which use their fixed 59.5 instead.
   const naiveWithdrawalAge = ref<number>(59.5);
 
+  // Restates the naive projection's own KPIs (Balance at Target Age, First
+  // Monthly Retirement Withdrawal) in today's dollars — independent of the
+  // complex engine's own inflationAdjChoice above, which governs the
+  // chart/stage breakdown instead. See naiveInflationFactor.
+  const naiveInflationAdjChoice = ref<boolean>(false);
+
+  // Which of the household's income streams (see usePortfolioAssumptionsStore)
+  // this account's percent-of-income contribution is measured against and
+  // escalates with — null means "Total Annual Income" (the default, and the
+  // only option available while a household has just one stream). Only
+  // meaningful in percent contribution mode; left untouched across a switch
+  // to dollar mode so it's still there if the user switches back.
+  const incomeStreamId = ref<string | null>(null);
+
 
   // Computed properties
   const inflationPerspective = computed(() => {
@@ -100,12 +114,41 @@ function defineAccountStore(id: string, persist: boolean) {
     max: lifeExpectancy.value,
   }));
 
-  const monthlyIncome = computed(() => annualIncome.value / 12);
+  // The specific income stream this account's contribution is tied to, if
+  // any. Undefined if incomeStreamId points at a stream that's since been
+  // deleted — see isIncomeStreamMissing, which distinguishes that from
+  // "not tied to a stream at all" (incomeStreamId === null).
+  const referencedIncomeStream = computed(() =>
+    incomeStreamId.value === null
+      ? null
+      : assumptions.incomeStreams.find((s) => s.id === incomeStreamId.value)
+  );
+
+  // True once this account was tied to a stream that no longer exists. The
+  // math never breaks either way — contributionIncomeAmount/contributionRaises
+  // below fall back to the household total the same as "not tied to a
+  // stream" — this just flags it for the UI so it doesn't happen silently.
+  const isIncomeStreamMissing = computed(
+    () => incomeStreamId.value !== null && !referencedIncomeStream.value
+  );
+
+  // The income amount and raise rate this account's percent-of-income
+  // contribution is based on: the specifically referenced stream's own
+  // figures, or the household's blended total/rate when this account isn't
+  // tied to one (or was, and that stream is gone).
+  const contributionIncomeAmount = computed(
+    () => referencedIncomeStream.value?.annualAmount ?? annualIncome.value
+  );
+  const contributionRaises = computed(
+    () => referencedIncomeStream.value?.annualRaises ?? annualRaises.value
+  );
+
+  const monthlyIncome = computed(() => contributionIncomeAmount.value / 12);
 
   const firstMonthlyContribution = computed(() =>
     contributionMode.value === 'dollar'
       ? contributionAmount.value
-      : (annualIncome.value * (savingsRate.value / 100)) / 12
+      : (contributionIncomeAmount.value * (savingsRate.value / 100)) / 12
   );
 
   // Switches between flat-dollar and percent-of-income contribution modes,
@@ -138,7 +181,7 @@ function defineAccountStore(id: string, persist: boolean) {
 
   const naiveYearsToTarget = computed(() => naiveTargetAge.value - ageToday.value);
 
-  const naiveBalanceAtTargetAge = computed(() =>
+  const naiveBalanceAtTargetAgeNominal = computed(() =>
     naiveAccumulate(
       currentBalance.value,
       firstMonthlyContribution.value,
@@ -147,12 +190,18 @@ function defineAccountStore(id: string, persist: boolean) {
     )
   );
 
-  const naiveMonthlyWithdrawal = computed(() =>
-    computeNaiveMonthlyWithdrawal(
-      naiveBalanceAtTargetAge.value,
-      growthRateIntraRetirement.value,
-      lifeExpectancy.value - naiveTargetAge.value
-    )
+  // Cumulative inflation between today and the target age — dividing a
+  // nominal dollar figure at that age by this restates it in today's
+  // purchasing power, the same convention applyInflationAdjustment uses for
+  // the complex engine's year-by-year rows (see useProjections.ts).
+  const naiveInflationFactor = computed(() =>
+    Math.pow(1 + annualInflation.value / 100, Math.max(0, naiveYearsToTarget.value))
+  );
+
+  const naiveBalanceAtTargetAge = computed(() =>
+    naiveInflationAdjChoice.value
+      ? naiveBalanceAtTargetAgeNominal.value / naiveInflationFactor.value
+      : naiveBalanceAtTargetAgeNominal.value
   );
 
   // The shared, year-by-year timeline engine — see useAccountProjection.ts
@@ -231,15 +280,14 @@ function defineAccountStore(id: string, persist: boolean) {
   // account whose own withdrawal start age is later than the portfolio's
   // Retirement Age keeps growing, untouched, through a dormant gap between
   // the two, which finalPreRetirementBalance wouldn't capture.
-  const balanceAtWithdrawalStart = computed((): number => {
-    const arr = futureProjection.value?.[inflationPerspective.value];
-    if (!arr || arr.length === 0) return currentBalance.value;
-
-    const index = withdrawalStartAge.value - ageToday.value;
-    if (index <= 0) return currentBalance.value;
-    if (index >= arr.length) return arr[arr.length - 1]!.endBalance;
-    return arr[index]!.startBalance;
-  });
+  const balanceAtWithdrawalStart = computed((): number =>
+    balanceAtAge(
+      futureProjection.value?.[inflationPerspective.value],
+      ageToday.value,
+      withdrawalStartAge.value,
+      currentBalance.value
+    )
+  );
 
   const avgMonthlyWithdrawal = computed(() => {
     const arr = futureProjection.value?.[inflationPerspective.value];
@@ -352,10 +400,16 @@ function defineAccountStore(id: string, persist: boolean) {
     inflationAdjChoice,
     naiveWithdrawalAge,
     naiveWithdrawalAgeBounds,
+    naiveInflationAdjChoice,
+    incomeStreamId,
 
     // Computed values
     inflationPerspective,
     yearsUntilRetirement,
+    referencedIncomeStream,
+    isIncomeStreamMissing,
+    contributionIncomeAmount,
+    contributionRaises,
     monthlyIncome,
     firstMonthlyContribution,
     setContributionMode,
@@ -363,8 +417,9 @@ function defineAccountStore(id: string, persist: boolean) {
     // Independent of everything below (futureProjection etc.), which still
     // drives the chart/stage breakdown via Withdrawal Start Age.
     naiveTargetAge,
+    naiveBalanceAtTargetAgeNominal,
+    naiveInflationFactor,
     naiveBalanceAtTargetAge,
-    naiveMonthlyWithdrawal,
     // Exposed (in addition to projectionGraph, which is tied to this
     // account's own inflationPerspective) so a portfolio-wide aggregate can
     // pick raw or inflation-adjusted independently of any one account's own
@@ -439,4 +494,6 @@ export function copyAccountFields(source: AccountStoreInstance, target: AccountS
   target.growthRateIntraRetirement = source.growthRateIntraRetirement;
   target.inflationAdjChoice = source.inflationAdjChoice;
   target.naiveWithdrawalAge = source.naiveWithdrawalAge;
+  target.naiveInflationAdjChoice = source.naiveInflationAdjChoice;
+  target.incomeStreamId = source.incomeStreamId;
 }

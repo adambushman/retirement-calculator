@@ -50,6 +50,11 @@ export interface AccountProjectionInput {
   growthRateIntraRetirement: number;
   contributionMode: ContributionMode;
   firstMonthlyContribution: number;
+  // The raise rate this account's percent-of-income contribution escalates
+  // by each year — the specific income stream it's tied to, or the
+  // household's blended rate when it isn't tied to one. Ignored in dollar
+  // mode. See useAccountStore's contributionRaises.
+  contributionRaises: number;
   withdrawalStartAge: number;
   withdrawalShare: number; // 0-100
 }
@@ -213,8 +218,11 @@ export function computePortfolioSimulation(
 
       // Contributions grow with raises (percent-of-income mode only) each
       // year they're still being made; a flat-dollar contribution is fixed.
+      // Each account escalates at its own contributionRaises — the specific
+      // income stream it's tied to, or the household blend otherwise — not
+      // a single portfolio-wide rate.
       if (age < s.contributingCutoffAge && s.input.contributionMode === 'percent') {
-        s.contributionMonthly *= 1 + assumptions.annualRaises / 100;
+        s.contributionMonthly *= 1 + s.input.contributionRaises / 100;
       }
     }
   }

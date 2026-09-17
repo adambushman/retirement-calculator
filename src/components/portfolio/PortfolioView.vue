@@ -178,8 +178,8 @@ function closeAccountModal(createdAccountId?: string) {
       <BodySectionHeader>
         Portfolio
         <template #subtitle>
-          How your accounts add up today, and where they're projected to land by first
-          withdrawal. Not a retirement plan — just some conservative numbers.
+          How your accounts add up today, and where they're projected to land at each
+          account's own withdrawal age. Not a retirement plan — just some conservative numbers.
         </template>
       </BodySectionHeader>
       <PortfolioSummary v-if="accountsDone" />
