@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import { format } from 'd3-format';
 
 import AccountSectionHeader from '@/components/AccountSectionHeader.vue';
@@ -12,6 +12,14 @@ const store = inject(AccountStoreKey)!;
 // a quick sense of scale, not exact-to-the-cent figures.
 const dollars = format('$.3~s');
 const age = format('.1~f');
+
+// Where the handle sits along the track, as a percent — used to float the
+// age label directly above it instead of a fixed static label.
+const naiveWithdrawalAgePercent = computed(() => {
+  const { min, max } = store.naiveWithdrawalAgeBounds;
+  if (max === min) return 0;
+  return ((store.naiveWithdrawalAge - min) / (max - min)) * 100;
+});
 
 // Expands the "$X today -> $Y by [target age]" line shown under the account
 // title (collapsed view) — see naiveTargetAge on the store for what drives
@@ -33,10 +41,13 @@ const age = format('.1~f');
         <h2 class="text-lg lg:text-2xl font-bold">{{ dollars(store.naiveBalanceAtTargetAge) }}</h2>
         <p class="text-xs lg:text-sm text-gray-500">Balance at Age {{ age(store.naiveTargetAge) }}</p>
 
-        <div v-if="store.accountType === 'brokerage'" class="mt-3 max-w-[220px] mx-auto">
-          <label class="block text-xs mb-2 text-gray-400" for="naive-withdrawal-age-input">
-            Naive Withdrawal Age &mdash; {{ age(store.naiveWithdrawalAge) }}
-          </label>
+        <div v-if="store.accountType === 'brokerage'" class="relative mt-6 pt-4 max-w-[220px] mx-auto">
+          <span
+            class="absolute top-0 -translate-x-1/2 text-xs font-medium text-gray-300 whitespace-nowrap"
+            :style="{ left: `${naiveWithdrawalAgePercent}%` }"
+          >
+            {{ age(store.naiveWithdrawalAge) }}
+          </span>
           <Slider
             v-model.number="store.naiveWithdrawalAge"
             class="w-full mt-0"
