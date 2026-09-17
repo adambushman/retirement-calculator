@@ -5,6 +5,8 @@ import type { AnnualProjection } from '@/composeables/useProjections';
 import { usePortfolioSimulation } from '@/composeables/usePortfolioSimulation';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { STAGE_ACCUMULATION, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
+import { ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
+import { naiveAccumulate, naiveMonthlyWithdrawal as computeNaiveMonthlyWithdrawal } from '@/composeables/useNaiveAccountProjection';
 
 // Pinia stores are normally singletons keyed by a fixed id. To model several
 // independent accounts with the exact same shape (inputs, projection engine,
@@ -61,6 +63,11 @@ function defineAccountStore(id: string, persist: boolean) {
   const growthRatePreRetirement = ref<number>(8.5);
   const growthRateIntraRetirement = ref<number>(5.5);
   const inflationAdjChoice = ref<boolean>(false);
+  // Only meaningful for Brokerage, which has no penalty-free withdrawal age
+  // of its own (see ACCOUNT_TYPE_RULES) — the naive projection below falls
+  // back to this whenever a type's rule is null. Ignored for Traditional/
+  // Roth, which use their fixed 59.5 instead.
+  const naiveWithdrawalAge = ref<number>(59.5);
 
 
   // Computed properties
@@ -81,6 +88,15 @@ function defineAccountStore(id: string, persist: boolean) {
   // whenever account type or the portfolio ages change.
   const withdrawalStartAgeBounds = computed(() => ({
     min: accountType.value === 'brokerage' ? ageToday.value : 59,
+    max: lifeExpectancy.value,
+  }));
+
+  // Traditional/Roth can't withdraw before 59; a taxable Brokerage account
+  // can be tapped any time from today; nothing can be later than life
+  // expectancy. Only relevant for Brokerage (Traditional/Roth ignore
+  // naiveWithdrawalAge entirely) — mirrors withdrawalStartAgeBounds.
+  const naiveWithdrawalAgeBounds = computed(() => ({
+    min: ageToday.value,
     max: lifeExpectancy.value,
   }));
 
@@ -109,6 +125,39 @@ function defineAccountStore(id: string, persist: boolean) {
     }
     contributionMode.value = mode;
   }
+
+  // A second, independent projection used only by this account's own card
+  // (subtitle + "Potential" section) — see useNaiveAccountProjection.ts for
+  // why it's closed-form rather than a year-by-year loop, and why it
+  // deliberately ignores Withdrawal Start Age, Withdrawal Share, and
+  // Retirement Age entirely. The cross-account engine below (futureProjection
+  // etc.) is untouched and still drives the chart/stage breakdown.
+  const naiveTargetAge = computed(
+    () => ACCOUNT_TYPE_RULES[accountType.value].penaltyFreeWithdrawalAge ?? naiveWithdrawalAge.value
+  );
+
+  const naiveYearsToTarget = computed(() => naiveTargetAge.value - ageToday.value);
+
+  const naiveAccumulation = computed(() =>
+    naiveAccumulate(
+      currentBalance.value,
+      firstMonthlyContribution.value,
+      growthRatePreRetirement.value,
+      naiveYearsToTarget.value
+    )
+  );
+
+  const naiveBalanceAtTargetAge = computed(() => naiveAccumulation.value.balanceAtTarget);
+  const naiveDollarsContributed = computed(() => naiveAccumulation.value.totalContributed);
+  const naiveDollarsGrowth = computed(() => naiveAccumulation.value.totalGrowth);
+
+  const naiveMonthlyWithdrawal = computed(() =>
+    computeNaiveMonthlyWithdrawal(
+      naiveBalanceAtTargetAge.value,
+      growthRateIntraRetirement.value,
+      lifeExpectancy.value - naiveTargetAge.value
+    )
+  );
 
   // The shared, year-by-year timeline engine — see useAccountProjection.ts
   // for how contributing/dormant/Bridge/Go-Go/Slow-Go/No-Go are determined
@@ -267,6 +316,11 @@ function defineAccountStore(id: string, persist: boolean) {
     else if (withdrawalStartAge.value > max) withdrawalStartAge.value = max;
   });
 
+  watch(naiveWithdrawalAgeBounds, ({ min, max }) => {
+    if (naiveWithdrawalAge.value < min) naiveWithdrawalAge.value = min;
+    else if (naiveWithdrawalAge.value > max) naiveWithdrawalAge.value = max;
+  });
+
 
   // Return all necessary state
   return {
@@ -300,6 +354,8 @@ function defineAccountStore(id: string, persist: boolean) {
     growthRatePreRetirement,
     growthRateIntraRetirement,
     inflationAdjChoice,
+    naiveWithdrawalAge,
+    naiveWithdrawalAgeBounds,
 
     // Computed values
     inflationPerspective,
@@ -307,6 +363,14 @@ function defineAccountStore(id: string, persist: boolean) {
     monthlyIncome,
     firstMonthlyContribution,
     setContributionMode,
+    // The account card's own projection — see useNaiveAccountProjection.ts.
+    // Independent of everything below (futureProjection etc.), which still
+    // drives the chart/stage breakdown via Withdrawal Start Age.
+    naiveTargetAge,
+    naiveBalanceAtTargetAge,
+    naiveDollarsContributed,
+    naiveDollarsGrowth,
+    naiveMonthlyWithdrawal,
     // Exposed (in addition to projectionGraph, which is tied to this
     // account's own inflationPerspective) so a portfolio-wide aggregate can
     // pick raw or inflation-adjusted independently of any one account's own
@@ -380,4 +444,5 @@ export function copyAccountFields(source: AccountStoreInstance, target: AccountS
   target.growthRatePreRetirement = source.growthRatePreRetirement;
   target.growthRateIntraRetirement = source.growthRateIntraRetirement;
   target.inflationAdjChoice = source.inflationAdjChoice;
+  target.naiveWithdrawalAge = source.naiveWithdrawalAge;
 }

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { inject } from 'vue';
+import { format } from 'd3-format';
 
+import Slider from '@/volt/Slider.vue';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
 import type { AccountType } from '@/stores/useAccountStore';
 import { ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
+
+const age = format('.1~f');
 
 const name = defineModel<string>('name', { default: '' });
 
@@ -43,6 +47,24 @@ const accountTypes: Array<{ value: AccountType; label: string; description: stri
           </span>
         </label>
       </div>
+    </div>
+
+    <div v-if="store.accountType === 'brokerage'">
+      <label class="block text-sm mb-2 text-gray-400" for="naive-withdrawal-age-input">
+        Naive Withdrawal Age &mdash; {{ age(store.naiveWithdrawalAge) }}
+      </label>
+      <p class="text-xs text-gray-400 mb-2">
+        Brokerage accounts have no penalty-free withdrawal age of their own — pick an age to use
+        as a rough "what if I started drawing on this" estimate (see the Potential section).
+      </p>
+      <Slider
+        v-model.number="store.naiveWithdrawalAge"
+        class="w-full max-w-sm"
+        inputId="naive-withdrawal-age-input"
+        :min="store.naiveWithdrawalAgeBounds.min"
+        :max="store.naiveWithdrawalAgeBounds.max"
+        :step="0.5"
+      />
     </div>
 
     <div class="flex flex-col sm:flex-row gap-6">

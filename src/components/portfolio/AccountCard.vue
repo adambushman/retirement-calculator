@@ -36,9 +36,10 @@ const draftName = ref(props.name);
 const accountTypeLabel = computed(() => ACCOUNT_TYPE_LABELS[store.accountType] ?? store.accountType);
 const accountTypeIcon = computed(() => ACCOUNT_TYPE_ICONS[store.accountType]);
 
-// Same SI-prefixed formatting as the Results KPIs (see AccountGrowthSummary)
+// Same SI-prefixed formatting as the Potential KPIs (see AccountGrowthSummary)
 // — this line is a quick sense of scale, not a precise figure.
 const compactDollars = format('$.3~s');
+const compactAge = format('.1~f');
 
 function startRename() {
   draftName.value = props.name;
@@ -165,8 +166,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
     <div class="flex items-center gap-2 text-sm lg:text-base text-gray-500 -mt-3">
       <span>{{ compactDollars(store.currentBalance) }} today</span>
       <span>&rarr;</span>
-      <span :class="store.balanceAtWithdrawalStart < 0 ? 'text-red-500' : 'text-emerald-500'">
-        {{ compactDollars(store.balanceAtWithdrawalStart) }} by first withdrawal
+      <span :class="store.naiveBalanceAtTargetAge < 0 ? 'text-red-500' : 'text-emerald-500'">
+        {{ compactDollars(store.naiveBalanceAtTargetAge) }} by age {{ compactAge(store.naiveTargetAge) }}
       </span>
     </div>
 
