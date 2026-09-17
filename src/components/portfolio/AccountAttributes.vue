@@ -35,7 +35,7 @@ const columns = computed(() => [
 </script>
 
 <template>
-  <AccountSectionHeader title="Details">
+  <AccountSectionHeader title="Facts">
     <p class="text-sm text-gray-400 mb-4">{{ rules.taxDescription }}</p>
     <div class="grid gap-10 sm:grid-cols-2">
       <div v-for="column in columns" :key="column.title">

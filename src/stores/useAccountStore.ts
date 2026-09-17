@@ -138,7 +138,7 @@ function defineAccountStore(id: string, persist: boolean) {
 
   const naiveYearsToTarget = computed(() => naiveTargetAge.value - ageToday.value);
 
-  const naiveAccumulation = computed(() =>
+  const naiveBalanceAtTargetAge = computed(() =>
     naiveAccumulate(
       currentBalance.value,
       firstMonthlyContribution.value,
@@ -146,10 +146,6 @@ function defineAccountStore(id: string, persist: boolean) {
       naiveYearsToTarget.value
     )
   );
-
-  const naiveBalanceAtTargetAge = computed(() => naiveAccumulation.value.balanceAtTarget);
-  const naiveDollarsContributed = computed(() => naiveAccumulation.value.totalContributed);
-  const naiveDollarsGrowth = computed(() => naiveAccumulation.value.totalGrowth);
 
   const naiveMonthlyWithdrawal = computed(() =>
     computeNaiveMonthlyWithdrawal(
@@ -368,8 +364,6 @@ function defineAccountStore(id: string, persist: boolean) {
     // drives the chart/stage breakdown via Withdrawal Start Age.
     naiveTargetAge,
     naiveBalanceAtTargetAge,
-    naiveDollarsContributed,
-    naiveDollarsGrowth,
     naiveMonthlyWithdrawal,
     // Exposed (in addition to projectionGraph, which is tied to this
     // account's own inflationPerspective) so a portfolio-wide aggregate can

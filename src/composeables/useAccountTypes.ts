@@ -42,7 +42,7 @@ export interface AccountTypeRules {
 export const ACCOUNT_TYPE_RULES: Record<AccountType, AccountTypeRules> = {
   traditional: {
     taxDescription:
-      'Contributions reduce your taxable income today. The full balance — original contributions plus all growth — is taxed as ordinary income when you withdraw it.',
+      'Traditional accounts are funded with pre-tax dollars, which reduces your taxable income today. The full balance — original contributions plus all growth — is taxed as ordinary income when you withdraw it.',
     contributionTaxTreatment: 'Pre-tax',
     withdrawalTaxTreatment: 'Taxed as ordinary income',
     penaltyFreeWithdrawalAge: 59.5,
@@ -50,7 +50,7 @@ export const ACCOUNT_TYPE_RULES: Record<AccountType, AccountTypeRules> = {
   },
   roth: {
     taxDescription:
-      'Funded with after-tax dollars, so qualified withdrawals — including every dollar of growth — come out completely tax-free.',
+      'Roth accounts are funded with after-tax dollars, so qualified withdrawals — including every dollar of growth — come out completely tax-free.',
     contributionTaxTreatment: 'Post-tax',
     withdrawalTaxTreatment: 'Tax-free (qualified)',
     penaltyFreeWithdrawalAge: 59.5,
@@ -58,7 +58,7 @@ export const ACCOUNT_TYPE_RULES: Record<AccountType, AccountTypeRules> = {
   },
   brokerage: {
     taxDescription:
-      'Funded with after-tax dollars. No contribution limits and no withdrawal age restrictions — but investment growth is subject to capital gains tax when sold.',
+      'Brokerage accounts are funded with after-tax dollars. No contribution limits and no withdrawal age restrictions — but investment growth is subject to capital gains tax when sold.',
     contributionTaxTreatment: 'After-tax, no special treatment',
     withdrawalTaxTreatment: 'Capital gains tax on growth only',
     penaltyFreeWithdrawalAge: null,

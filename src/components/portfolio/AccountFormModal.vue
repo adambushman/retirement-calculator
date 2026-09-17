@@ -7,7 +7,6 @@ import SecondaryButton from '@/volt/SecondaryButton.vue';
 import CheckIcon from '@primevue/icons/check';
 import StepAccountDetails from '@/components/portfolio/wizard/StepAccountDetails.vue';
 import StepEarningSaving from '@/components/portfolio/wizard/StepEarningSaving.vue';
-import StepRetirementPlan from '@/components/portfolio/wizard/StepRetirementPlan.vue';
 
 import { useAccountStore, useDraftAccountStore, copyAccountFields } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
@@ -45,7 +44,11 @@ provide(AccountStoreKey, draft);
 
 onBeforeUnmount(() => draft.$dispose());
 
-const steps = ['Account Details', 'Earning & Saving', 'Retirement Plan'];
+// Withdrawal Start Age / Withdrawal Share / Growth Rate (During Withdrawals)
+// used to be a third "Retirement Plan" step here, but those now live (and
+// are edited) in the portfolio-wide Retirement Plan section instead — see
+// RetirementPlanInputs.vue's "Per-Account Withdrawal Settings".
+const steps = ['Account Details', 'Earning & Saving'];
 
 const currentStep = ref(0);
 // Linear stepper: steps up to here have been visited and can be revisited,
@@ -131,8 +134,7 @@ function done() {
     </div>
 
     <StepAccountDetails v-if="currentStep === 0" v-model:name="draftName" />
-    <StepEarningSaving v-else-if="currentStep === 1" />
-    <StepRetirementPlan v-else />
+    <StepEarningSaving v-else />
 
     <template #footer>
       <div class="flex justify-between w-full">

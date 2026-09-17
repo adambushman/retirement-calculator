@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { format } from 'd3-format';
 
 import InputNumber from '@/volt/InputNumber.vue';
 import Slider from '@/volt/Slider.vue';
@@ -25,15 +24,15 @@ const assumptions = usePortfolioAssumptionsStore();
 // straight through immediately.
 
 // Withdrawal Start Age / Withdrawal Share / Growth Rate (During Withdrawals)
-// used to be shown on each account's own card, under a "Retirement Plan"
-// column. Moved here instead — reviewing an account's own balance/
-// contribution setup shouldn't require thinking about retirement-phase
-// details yet, and this section is where "how retirement looks" belongs for
-// every account. This is a straight relocation of the same values, still
-// read-only for now; how this should actually look/feel to edit here is a
-// separate design pass.
+// used to be edited on a third "Retirement Plan" step of the account wizard
+// (StepRetirementPlan.vue, now removed) and shown on the account's own card.
+// Both moved here — reviewing an account's own balance/contribution setup
+// shouldn't require thinking about retirement-phase details yet, and this is
+// where "how retirement looks" belongs for every account. Since the wizard
+// step is gone, this is now the *only* place these fields are editable, so
+// each is a live InputNumber straight against the account's own store,
+// matching every other field in this section.
 const portfolio = usePortfolioStore();
-const percent = format('.2~f');
 const accountRows = computed(() =>
   portfolio.accounts.map((meta) => {
     const account = useAccountStore(meta.id);
@@ -42,9 +41,7 @@ const accountRows = computed(() =>
       name: meta.name,
       typeLabel: ACCOUNT_TYPE_LABELS[account.accountType] ?? account.accountType,
       typeIcon: ACCOUNT_TYPE_ICONS[account.accountType],
-      withdrawalStartAge: String(account.withdrawalStartAge),
-      withdrawalShare: `${percent(account.withdrawalShare)}%`,
-      growthRateIntraRetirement: `${percent(account.growthRateIntraRetirement)}%`,
+      account,
     };
   })
 );
@@ -139,7 +136,7 @@ const accountRows = computed(() =>
 
     <div v-if="accountRows.length">
       <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Per-Account Withdrawal Settings</h4>
-      <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="space-y-6">
         <div v-for="row in accountRows" :key="row.id">
           <div class="flex items-center gap-1.5 text-sm font-medium mb-2">
             <span>{{ row.name }}</span>
@@ -147,22 +144,52 @@ const accountRows = computed(() =>
               | <component :is="row.typeIcon" style="width: 14px; height: 14px" /> {{ row.typeLabel }}
             </span>
           </div>
-          <table class="w-full text-sm border-collapse">
-            <tbody>
-              <tr class="border-b border-surface-100 dark:border-surface-800">
-                <td class="py-1.5 pr-2 text-gray-400 align-top">Withdrawal Start Age</td>
-                <td class="py-1.5 font-medium text-right">{{ row.withdrawalStartAge }}</td>
-              </tr>
-              <tr class="border-b border-surface-100 dark:border-surface-800">
-                <td class="py-1.5 pr-2 text-gray-400 align-top">Withdrawal Share</td>
-                <td class="py-1.5 font-medium text-right">{{ row.withdrawalShare }}</td>
-              </tr>
-              <tr class="last:border-0">
-                <td class="py-1.5 pr-2 text-gray-400 align-top">Growth Rate (During Withdrawals)</td>
-                <td class="py-1.5 font-medium text-right">{{ row.growthRateIntraRetirement }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="flex flex-wrap gap-4">
+            <div>
+              <label class="block text-sm mb-2 text-gray-400" :for="`withdrawal-start-age-input-${row.id}`">
+                Withdrawal Start Age
+              </label>
+              <InputNumber
+                v-model.number="row.account.withdrawalStartAge"
+                @input="$event.value !== null && (row.account.withdrawalStartAge = $event.value)"
+                :inputId="`withdrawal-start-age-input-${row.id}`"
+                size="small"
+                :min="row.account.withdrawalStartAgeBounds.min"
+                :max="row.account.withdrawalStartAgeBounds.max"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm mb-2 text-gray-400" :for="`withdrawal-share-input-${row.id}`">
+                Withdrawal Share
+              </label>
+              <InputNumber
+                v-model.number="row.account.withdrawalShare"
+                @input="$event.value !== null && (row.account.withdrawalShare = $event.value)"
+                :inputId="`withdrawal-share-input-${row.id}`"
+                size="small"
+                suffix="%"
+                :min="0"
+                :max="100"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm mb-2 text-gray-400" :for="`intra-retire-growth-input-${row.id}`">
+                Growth Rate (During Withdrawals)
+              </label>
+              <InputNumber
+                v-model.number="row.account.growthRateIntraRetirement"
+                @input="$event.value !== null && (row.account.growthRateIntraRetirement = $event.value)"
+                :inputId="`intra-retire-growth-input-${row.id}`"
+                size="small"
+                suffix="%"
+                :min="0"
+                :max="12"
+                :step="0.25"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

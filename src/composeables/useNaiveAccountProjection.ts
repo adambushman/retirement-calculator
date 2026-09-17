@@ -22,15 +22,6 @@
 // throughout) — this is meant to be a quick, rough read, not a rerun of the
 // full simulation.
 
-export interface NaiveAccumulationResult {
-  /** Projected balance once the account reaches its target withdrawal age. */
-  balanceAtTarget: number;
-  /** Total contributed between now and the target age (flat, no raises). */
-  totalContributed: number;
-  /** Growth = balanceAtTarget - startingBalance - totalContributed. */
-  totalGrowth: number;
-}
-
 /**
  * Compounds a starting balance plus a flat monthly contribution forward by
  * `years` (may be fractional, e.g. a target age of 59.5 for someone 31 today
@@ -41,7 +32,7 @@ export function naiveAccumulate(
   monthlyContribution: number,
   annualGrowthRatePercent: number,
   years: number
-): NaiveAccumulationResult {
+): number {
   const clampedYears = Math.max(0, years);
   const rate = annualGrowthRatePercent / 100;
   const annualContribution = monthlyContribution * 12;
@@ -54,14 +45,7 @@ export function naiveAccumulate(
   const contributionGrowth =
     rate === 0 ? annualContribution * clampedYears : annualContribution * ((growthFactor - 1) / rate);
 
-  const balanceAtTarget = balanceGrowth + contributionGrowth;
-  const totalContributed = annualContribution * clampedYears;
-
-  return {
-    balanceAtTarget,
-    totalContributed,
-    totalGrowth: balanceAtTarget - startingBalance - totalContributed,
-  };
+  return balanceGrowth + contributionGrowth;
 }
 
 /**

@@ -22,9 +22,7 @@ const age = format('.1~f');
 const kpis = computed(() => [
   { label: 'Balance Today', value: store.currentBalance },
   { label: `Balance at Age ${age(store.naiveTargetAge)}`, value: store.naiveBalanceAtTargetAge },
-  { label: 'Dollars You Contributed', value: store.naiveDollarsContributed },
-  { label: 'Dollars of Growth', value: store.naiveDollarsGrowth },
-  { label: 'Monthly Withdrawal Potential', value: store.naiveMonthlyWithdrawal },
+  { label: 'Monthly Retirement Withdrawals', value: store.naiveMonthlyWithdrawal },
 ]);
 </script>
 
@@ -44,7 +42,7 @@ const kpis = computed(() => [
       />
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
       <div v-for="kpi in kpis" :key="kpi.label">
         <h2 class="text-lg lg:text-2xl font-bold">{{ dollars(kpi.value) }}</h2>
         <p class="text-xs lg:text-sm text-gray-500">{{ kpi.label }}</p>
