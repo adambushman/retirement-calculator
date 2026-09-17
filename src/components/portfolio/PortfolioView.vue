@@ -4,11 +4,10 @@ import PlusIcon from '@primevue/icons/plus';
 import TrashIcon from '@primevue/icons/trash';
 import PencilIcon from '@primevue/icons/pencil';
 import RefreshIcon from '@primevue/icons/refresh';
-import CheckIcon from '@primevue/icons/check';
 
-import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
 import BodySectionHeader from '@/components/BodySectionHeader.vue';
+import SectionPlaceholder from '@/components/portfolio/SectionPlaceholder.vue';
 import ConfirmModal from '@/components/ConfirmModal.vue';
 import ContextSummary from '@/components/portfolio/ContextSummary.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
@@ -25,11 +24,20 @@ import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsSt
 const portfolio = usePortfolioStore();
 const assumptions = usePortfolioAssumptionsStore();
 
-// The full portfolio view (summary + account list) only appears once the
-// shared assumptions are described and at least one account exists;
-// otherwise a two-step "describe portfolio, then add accounts" onboarding
-// shows instead (step 2 stays locked until step 1 is done).
-const showFullView = computed(() => assumptions.isDescribed && portfolio.accounts.length > 0);
+// Every section header (Context, Accounts, Portfolio, Retirement Plan,
+// Summary) always renders — this is the walk-through a first-time user
+// actually follows, so it should look like the real app, not a special
+// onboarding screen. Only two sections have a gate of their own (Context
+// must be described; at least one account must exist); Portfolio,
+// Retirement Plan, and Summary all just depend on that same "an account
+// exists" condition and share no separate action, so they unlock the moment
+// Accounts does. Whichever section isn't done yet renders a numbered
+// SectionPlaceholder instead of its real content; only the very next
+// undone section gets an enabled button (or, for the three with no button
+// of their own, un-dimmed number/copy) — everything after it stays dimmed
+// and disabled until the sections above it are finished.
+const contextDone = computed(() => assumptions.isDescribed);
+const accountsDone = computed(() => portfolio.accounts.length > 0);
 
 const showAssumptionsModal = ref(false);
 
@@ -80,7 +88,7 @@ function closeAccountModal(createdAccountId?: string) {
 
 <template>
   <div class="space-y-12">
-    <div v-if="showFullView">
+    <div>
       <div class="flex items-start justify-between mb-4 gap-4">
         <BodySectionHeader>
           Context
@@ -89,7 +97,7 @@ function closeAccountModal(createdAccountId?: string) {
             builds on.
           </template>
         </BodySectionHeader>
-        <div class="flex items-center gap-2">
+        <div v-if="contextDone" class="flex items-center gap-2">
           <SecondaryButton rounded aria-label="Edit portfolio assumptions" @click="showAssumptionsModal = true">
             <template #icon>
               <PencilIcon style="width: 14px; height: 14px" />
@@ -102,63 +110,20 @@ function closeAccountModal(createdAccountId?: string) {
           </SecondaryButton>
         </div>
       </div>
-      <ContextSummary />
+
+      <ContextSummary v-if="contextDone" />
+      <SectionPlaceholder
+        v-else
+        :number="1"
+        title="Describe Context"
+        description="Shared assumptions like income, age, and life expectancy — used by every account."
+        :active="true"
+        button-label="Get Started"
+        @action="showAssumptionsModal = true"
+      />
     </div>
 
-    <div v-if="!showFullView" class="grid gap-4 sm:grid-cols-2">
-      <div
-        class="flex flex-col items-center gap-3 py-10 px-4 text-center rounded-lg border"
-        :class="assumptions.isDescribed
-          ? 'border-primary-200 dark:border-primary/30 bg-primary-50/50 dark:bg-primary/5'
-          : 'border-dashed border-surface-200 dark:border-surface-700'"
-      >
-        <div
-          class="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium"
-          :class="assumptions.isDescribed
-            ? 'bg-primary text-primary-contrast'
-            : 'bg-surface-100 dark:bg-surface-800 text-gray-400'"
-        >
-          <CheckIcon v-if="assumptions.isDescribed" style="width: 14px; height: 14px" />
-          <template v-else>1</template>
-        </div>
-        <p class="font-medium">Describe Context</p>
-        <p class="text-sm text-gray-500">
-          Shared assumptions like income, age, and life expectancy — used by every account.
-        </p>
-        <Button
-          :label="assumptions.isDescribed ? 'Edit Assumptions' : 'Get Started'"
-          @click="showAssumptionsModal = true"
-        />
-      </div>
-
-      <div
-        class="flex flex-col items-center gap-3 py-10 px-4 text-center rounded-lg border border-dashed
-          border-surface-200 dark:border-surface-700"
-        :class="!assumptions.isDescribed && 'opacity-50'"
-      >
-        <div class="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium
-          bg-surface-100 dark:bg-surface-800 text-gray-400">
-          2
-        </div>
-        <p class="font-medium">Add Accounts</p>
-        <p class="text-sm text-gray-500">
-          {{ assumptions.isDescribed
-            ? 'Add a retirement account to start building your portfolio.'
-            : 'Complete Step 1 first.' }}
-        </p>
-        <Button
-          label="Add Retirement Account"
-          :disabled="!assumptions.isDescribed"
-          @click="addAccount"
-        >
-          <template #icon>
-            <PlusIcon />
-          </template>
-        </Button>
-      </div>
-    </div>
-
-    <div v-else>
+    <div>
       <div class="flex items-start justify-between mb-4 gap-4">
         <BodySectionHeader>
           Accounts
@@ -167,7 +132,7 @@ function closeAccountModal(createdAccountId?: string) {
             with more account types (like Social Security and pensions) on the way.
           </template>
         </BodySectionHeader>
-        <div class="flex items-center gap-2">
+        <div v-if="accountsDone" class="flex items-center gap-2">
           <SecondaryButton rounded aria-label="Add account" @click="addAccount">
             <template #icon>
               <PlusIcon style="width: 14px; height: 14px" />
@@ -181,7 +146,7 @@ function closeAccountModal(createdAccountId?: string) {
         </div>
       </div>
 
-      <div class="space-y-4">
+      <div v-if="accountsDone" class="space-y-4">
         <AccountCard
           v-for="account in portfolio.accounts"
           :key="account.id"
@@ -192,9 +157,24 @@ function closeAccountModal(createdAccountId?: string) {
           @edit="editAccount"
         />
       </div>
+      <SectionPlaceholder
+        v-else
+        :number="2"
+        title="Add Accounts"
+        :description="contextDone
+          ? 'Add a retirement account to start building your portfolio.'
+          : 'Complete Step 1 first.'"
+        :active="contextDone"
+        button-label="Add Retirement Account"
+        @action="addAccount"
+      >
+        <template #icon>
+          <PlusIcon />
+        </template>
+      </SectionPlaceholder>
     </div>
 
-    <div v-if="showFullView">
+    <div>
       <BodySectionHeader>
         Portfolio
         <template #subtitle>
@@ -202,10 +182,17 @@ function closeAccountModal(createdAccountId?: string) {
           withdrawal. Not a retirement plan — just some conservative numbers.
         </template>
       </BodySectionHeader>
-      <PortfolioSummary />
+      <PortfolioSummary v-if="accountsDone" />
+      <SectionPlaceholder
+        v-else
+        :number="3"
+        title="Portfolio Summary"
+        description="Add an account above to see how your portfolio adds up."
+        :active="false"
+      />
     </div>
 
-    <div v-if="showFullView">
+    <div>
       <BodySectionHeader>
         Retirement Plan
         <template #subtitle>
@@ -213,16 +200,32 @@ function closeAccountModal(createdAccountId?: string) {
           each stage lasts, and how much you'll draw down.
         </template>
       </BodySectionHeader>
-      <RetirementPlanInputs />
+      <RetirementPlanInputs v-if="accountsDone" />
+      <SectionPlaceholder
+        v-else
+        :number="4"
+        title="Retirement Plan"
+        description="Add an account above to start shaping your retirement plan."
+        :active="false"
+      />
     </div>
 
-    <div v-if="showFullView">
+    <div>
       <BodySectionHeader>
         Summary
         <template #subtitle>The rest of your story — from today through every stage of retirement.</template>
       </BodySectionHeader>
-      <PortfolioCoverageLegend />
-      <PortfolioResultsPanel />
+      <template v-if="accountsDone">
+        <PortfolioCoverageLegend />
+        <PortfolioResultsPanel />
+      </template>
+      <SectionPlaceholder
+        v-else
+        :number="5"
+        title="Summary"
+        description="Add an account above to see the rest of your story."
+        :active="false"
+      />
     </div>
 
     <PortfolioAssumptionsModal v-if="showAssumptionsModal" @close="showAssumptionsModal = false" />
