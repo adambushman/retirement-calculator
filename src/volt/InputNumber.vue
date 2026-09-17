@@ -32,7 +32,7 @@ const theme = ref<InputNumberPassThroughOptions>({
     root: `inline-flex relative 
         p-vertical:flex-col p-fluid:w-full`,
     pcInputText: {
-        root: `appearance-none rounded-md outline-hidden flex-auto
+        root: `appearance-none rounded-md outline-hidden flex-auto min-w-0
         bg-surface-0 dark:bg-surface-950
         p-filled:bg-surface-50 dark:p-filled:bg-surface-800
         text-surface-700 dark:text-surface-0

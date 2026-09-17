@@ -156,59 +156,61 @@ const dollars = format('$,.0f');
         different income sources don't necessarily grow at the same pace.
       </p>
 
-      <div
-        v-for="(stream, i) in draft.incomeStreams"
-        :key="stream.id"
-        class="flex flex-wrap items-end gap-4 pb-4 border-b border-surface-100 dark:border-surface-800 last:border-0 last:pb-0"
-      >
-        <div class="flex-1 min-w-[140px]">
-          <label class="block text-sm mb-2 text-gray-400" :for="`income-name-input-${stream.id}`">
-            Name
-          </label>
+      <div class="grid gap-x-4 gap-y-3 items-center" style="grid-template-columns: minmax(0, 1fr) 130px 100px 2.5rem">
+        <!-- One header row instead of a label above every input — a grid
+             (rather than independent flex rows) so its columns stay aligned
+             with each stream row below regardless of how wide the inputs
+             render. -->
+        <span class="text-sm text-gray-400">Name</span>
+        <span class="text-sm text-gray-400">Annual Amount</span>
+        <span class="text-sm text-gray-400">Annual Raises</span>
+        <span></span>
+
+        <template v-for="(stream, i) in draft.incomeStreams" :key="stream.id">
           <input
             :id="`income-name-input-${stream.id}`"
             v-model="stream.name"
             type="text"
+            aria-label="Name"
             class="rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950
-              px-3 py-1.5 text-sm w-full outline-none focus-visible:outline focus-visible:outline-1
+              px-3 py-1.5 text-sm w-full min-w-0 outline-none focus-visible:outline focus-visible:outline-1
               focus-visible:outline-primary"
           />
-        </div>
 
-        <div>
-          <label class="block text-sm mb-2 text-gray-400" :for="`income-amount-input-${stream.id}`">
-            Annual Amount
-          </label>
           <InputNumber
             v-model.number="stream.annualAmount"
             :inputId="`income-amount-input-${stream.id}`"
+            aria-label="Annual Amount"
+            class="w-full"
             size="small"
             prefix="$"
           />
-        </div>
 
-        <div>
-          <label class="block text-sm mb-2 text-gray-400" :for="`income-raises-input-${stream.id}`">
-            Annual Raises
-          </label>
           <InputNumber
             v-model.number="stream.annualRaises"
             :inputId="`income-raises-input-${stream.id}`"
+            aria-label="Annual Raises"
+            class="w-full"
             size="small"
             suffix="%"
           />
-        </div>
 
-        <SecondaryButton
-          rounded
-          :aria-label="`Remove ${stream.name || 'income stream'}`"
-          :disabled="draft.incomeStreams.length <= 1"
-          @click="draft.removeIncomeStream(stream.id)"
-        >
-          <template #icon>
-            <TrashIcon style="width: 14px; height: 14px" />
-          </template>
-        </SecondaryButton>
+          <SecondaryButton
+            rounded
+            :aria-label="`Remove ${stream.name || 'income stream'}`"
+            :disabled="draft.incomeStreams.length <= 1"
+            @click="draft.removeIncomeStream(stream.id)"
+          >
+            <template #icon>
+              <TrashIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+
+          <div
+            v-if="i < draft.incomeStreams.length - 1"
+            class="col-span-full h-px bg-surface-100 dark:bg-surface-800"
+          />
+        </template>
       </div>
 
       <div class="flex justify-end">
@@ -219,8 +221,8 @@ const dollars = format('$,.0f');
         </SecondaryButton>
       </div>
 
-      <p class="text-sm text-gray-400 pt-2 border-t border-surface-100 dark:border-surface-800">
-        Total Annual Income: <span class="font-semibold text-gray-200">{{ dollars(draft.annualIncome) }}</span>
+      <p class="text-sm pt-2 border-t border-surface-100 dark:border-surface-800">
+        Total Annual Income: <span class="font-semibold">{{ dollars(draft.annualIncome) }}</span>
       </p>
     </div>
 
