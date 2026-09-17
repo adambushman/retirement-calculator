@@ -22,10 +22,17 @@ const basicsRows = computed(() => [
 const incomeRows = computed(() => [
   ...assumptions.incomeStreams.map((s) => ({
     label: s.name || 'Unnamed',
-    value: dollars(s.annualAmount),
+    amount: dollars(s.annualAmount),
+    raises: `${percent(s.annualRaises)}%`,
     total: false,
   })),
-  { label: 'Total Annual Income', value: dollars(assumptions.annualIncome), total: true },
+  {
+    label: 'Total Annual Income',
+    amount: dollars(assumptions.annualIncome),
+    // The blended, amount-weighted rate — see annualRaises on the store.
+    raises: `${percent(assumptions.annualRaises)}%`,
+    total: true,
+  },
 ]);
 </script>
 
@@ -45,6 +52,13 @@ const incomeRows = computed(() => [
     </table>
 
     <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr>
+          <th class="pb-1.5 pr-2 text-left font-normal text-gray-400">Name</th>
+          <th class="pb-1.5 px-2 text-right font-normal text-gray-400">Annual Amount</th>
+          <th class="pb-1.5 pl-2 text-right font-normal text-gray-400">Annual Raises</th>
+        </tr>
+      </thead>
       <tbody>
         <tr
           v-for="row in incomeRows"
@@ -55,8 +69,11 @@ const incomeRows = computed(() => [
           <td class="py-1.5 pr-2 align-top" :class="row.total ? 'font-medium' : 'text-gray-400'">
             {{ row.label }}
           </td>
-          <td class="py-1.5 text-right" :class="row.total ? 'font-semibold' : 'font-medium'">
-            {{ row.value }}
+          <td class="py-1.5 px-2 text-right" :class="row.total ? 'font-semibold' : 'font-medium'">
+            {{ row.amount }}
+          </td>
+          <td class="py-1.5 pl-2 text-right" :class="row.total ? 'font-semibold' : 'font-medium'">
+            {{ row.raises }}
           </td>
         </tr>
       </tbody>
