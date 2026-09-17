@@ -211,11 +211,13 @@ const dollars = format('$,.0f');
         </SecondaryButton>
       </div>
 
-      <SecondaryButton label="Add Income Stream" @click="draft.addIncomeStream()">
-        <template #icon>
-          <PlusIcon style="width: 14px; height: 14px" />
-        </template>
-      </SecondaryButton>
+      <div class="flex justify-end">
+        <SecondaryButton rounded aria-label="Add income stream" @click="draft.addIncomeStream()">
+          <template #icon>
+            <PlusIcon style="width: 14px; height: 14px" />
+          </template>
+        </SecondaryButton>
+      </div>
 
       <p class="text-sm text-gray-400 pt-2 border-t border-surface-100 dark:border-surface-800">
         Total Annual Income: <span class="font-semibold text-gray-200">{{ dollars(draft.annualIncome) }}</span>
