@@ -30,22 +30,21 @@ const earningSavingRows = computed(() => [
   { label: 'Growth Rate (Before Withdrawals)', value: `${percent(store.growthRatePreRetirement)}%` },
 ]);
 
-const retirementPlanRows = computed(() => [
-  { label: 'Withdrawal Start Age', value: String(store.withdrawalStartAge) },
-  { label: 'Withdrawal Share', value: `${percent(store.withdrawalShare)}%` },
-  { label: 'Growth Rate (During Withdrawals)', value: `${percent(store.growthRateIntraRetirement)}%` },
-]);
-
+// Withdrawal Start Age, Withdrawal Share, and Growth Rate (During
+// Withdrawals) used to live here as a third "Retirement Plan" column, but
+// that's retirement-phase config, and this card is about the account before
+// any of that is relevant — so those fields now live in the portfolio-wide
+// Retirement Plan section instead (see RetirementPlanInputs.vue), listed per
+// account.
 const columns = computed(() => [
   { title: 'Account Details', rows: accountDetailsRows.value },
   { title: 'Earning & Saving', rows: earningSavingRows.value },
-  { title: 'Retirement Plan', rows: retirementPlanRows.value },
 ]);
 </script>
 
 <template>
-  <AccountSectionHeader title="Inputs">
-    <div class="grid gap-10 sm:grid-cols-3">
+  <AccountSectionHeader title="Assumptions">
+    <div class="grid gap-10 sm:grid-cols-2">
       <div v-for="column in columns" :key="column.title">
         <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">{{ column.title }}</h4>
         <table class="w-full text-sm border-collapse">

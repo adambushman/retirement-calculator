@@ -24,7 +24,7 @@ const kpis = computed(() => [
 </script>
 
 <template>
-  <AccountSectionHeader title="Results">
+  <AccountSectionHeader title="Potential">
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
       <div v-for="kpi in kpis" :key="kpi.label">
         <h2 class="text-lg lg:text-2xl font-bold">{{ dollars(kpi.value) }}</h2>
