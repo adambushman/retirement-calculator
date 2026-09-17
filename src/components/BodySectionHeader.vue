@@ -6,7 +6,7 @@
   <h2 class="text-3xl border-l-4 ps-2" :class="$slots.subtitle ? 'mb-1' : ''">
     <slot />
   </h2>
-  <p v-if="$slots.subtitle" class="text-sm lg:text-base text-gray-400 ps-2">
+  <p v-if="$slots.subtitle" class="text-sm lg:text-base text-gray-400 ps-3">
     <slot name="subtitle" />
   </p>
 </div>

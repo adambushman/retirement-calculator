@@ -81,7 +81,7 @@ function closeAccountModal(createdAccountId?: string) {
 <template>
   <div class="space-y-12">
     <div v-if="showFullView">
-      <div class="flex items-start justify-between mb-4">
+      <div class="flex items-start justify-between mb-4 gap-4">
         <BodySectionHeader>
           Context
           <template #subtitle>
@@ -159,7 +159,7 @@ function closeAccountModal(createdAccountId?: string) {
     </div>
 
     <div v-else>
-      <div class="flex items-start justify-between mb-4">
+      <div class="flex items-start justify-between mb-4 gap-4">
         <BodySectionHeader>
           Accounts
           <template #subtitle>
