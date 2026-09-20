@@ -4,20 +4,15 @@ import type { AnnualProjection } from '@/composeables/useProjections';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
-import {
-  STAGE_ACCUMULATION,
-  STAGE_BRIDGE,
-  STAGE_GO_GO,
-  STAGE_SLOW_GO,
-  STAGE_NO_GO,
-  type StageName,
-} from '@/composeables/useStages';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
+import { ACCUMULATION_ID } from '@/composeables/useStages';
 
 export interface PortfolioProjectionRow {
   age: number;
   accountId: string;
   accountName: string;
-  stage: StageName;
+  /** A stage id, or ACCUMULATION_ID — resolve display name/color by id lookup. */
+  stage: string;
   /** This account's own end balance that year — stacking every account's
    * row for a given age yields the portfolio's combined balance. */
   balance: number;
@@ -26,19 +21,11 @@ export interface PortfolioProjectionRow {
 }
 
 export interface StageAggregate {
-  stage: StageName;
+  stage: string;
   finalBalance: number;
   totalFlow: number;
   totalGrowth: number;
 }
-
-const STAGE_ORDER: StageName[] = [
-  STAGE_ACCUMULATION,
-  STAGE_BRIDGE,
-  STAGE_GO_GO,
-  STAGE_SLOW_GO,
-  STAGE_NO_GO,
-];
 
 /**
  * Combines every account's own year-by-year projection into one
@@ -50,6 +37,7 @@ const STAGE_ORDER: StageName[] = [
 export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjusted'>) {
   const portfolio = usePortfolioStore();
   const assumptions = usePortfolioAssumptionsStore();
+  const retirementPlan = useRetirementPlanStore();
 
   const accounts = computed(() =>
     portfolio.accounts.map((a) => ({ id: a.id, name: a.name, store: useAccountStore(a.id) }))
@@ -66,7 +54,7 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
           age: assumptions.ageToday + i,
           accountId: id,
           accountName: name,
-          stage: row.stage as StageName,
+          stage: row.stage,
           balance: row.endBalance,
           annualFlow: row.annualFlow,
           totalGrowth: row.totalGrowth,
@@ -76,8 +64,10 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
     return out;
   });
 
-  const stageAggregates = computed<StageAggregate[]>(() =>
-    STAGE_ORDER.map((stage) => {
+  const stageAggregates = computed<StageAggregate[]>(() => {
+    const stageIds = [ACCUMULATION_ID, ...retirementPlan.stages.map((s) => s.id)];
+
+    return stageIds.map((stage) => {
       let finalBalance = 0;
       let totalFlow = 0;
       let totalGrowth = 0;
@@ -94,8 +84,8 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
       }
 
       return { stage, finalBalance, totalFlow, totalGrowth };
-    })
-  );
+    });
+  });
 
   return { rows, stageAggregates };
 }

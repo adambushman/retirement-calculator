@@ -5,6 +5,7 @@ import { computePortfolioSimulation } from '@/composeables/useAccountProjection'
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 
 const EMPTY_PROJECTION: FullProjection = { raw: [], 'inflation-adjusted': [] };
 
@@ -31,6 +32,7 @@ export interface PortfolioSimulationResult {
 export function usePortfolioSimulation(): PortfolioSimulationResult {
   const portfolio = usePortfolioStore();
   const assumptions = usePortfolioAssumptionsStore();
+  const retirementPlan = useRetirementPlanStore();
 
   const projections = computed<Map<string, FullProjection>>(() => {
     const accounts = portfolio.accounts.map((meta) => {
@@ -44,21 +46,16 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
         firstMonthlyContribution: store.firstMonthlyContribution,
         contributionRaises: store.contributionRaises,
         withdrawalStartAge: store.withdrawalStartAge,
-        withdrawalShare: store.withdrawalShare,
       };
     });
 
     return computePortfolioSimulation(accounts, {
       ageToday: assumptions.ageToday,
       lifeExpectancy: assumptions.lifeExpectancy,
-      retirementAge: assumptions.retirementAge,
+      firstStageStartAge: retirementPlan.firstStageStartAge ?? assumptions.lifeExpectancy,
       annualIncome: assumptions.annualIncome,
       annualRaises: assumptions.annualRaises,
-      retirementBoundaries: assumptions.retirementBoundaries,
-      incomeReplacementBridge: assumptions.incomeReplacementBridge,
-      incomeReplacementGoGo: assumptions.incomeReplacementGoGo,
-      incomeReplacementSlowGo: assumptions.incomeReplacementSlowGo,
-      incomeReplacementNoGo: assumptions.incomeReplacementNoGo,
+      stages: retirementPlan.stages,
       annualInflation: assumptions.annualInflation,
     });
   });

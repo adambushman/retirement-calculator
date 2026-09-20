@@ -2,34 +2,27 @@
 import { format } from 'd3-format';
 
 import IconToolTip from '@/components/IconToolTip.vue';
-import { STAGE_COLORS, type StageName } from '@/composeables/useStages';
 
-const props = defineProps<{
-  stage: StageName,
+defineProps<{
+  name: string,
+  color: string,
+  description: string,
   finalBalance: number,
   totalFlow: number,
   avgMonthlyFlow: number,
   totalGrowth: number,
   years: Array<number>
 }>();
-
-const stageDescription: Record<StageName, string> = {
-  'Accumulation': 'Everything before this account\'s withdrawal start age — contributions arrive while you\'re still working, and the balance keeps compounding untouched even after you retire, right up until the first withdrawal.',
-  'Bridge': 'The gap between an account\'s own withdrawal start age and full retirement, when some accounts may already be drawn on to partially replace income.',
-  'Go-Go Years': 'The early stage of retirement when you\'re healthiest, most active, and typically spending more on travel and lifestyle.',
-  'Slow-Go Years': 'The middle stage of retirement when activity levels naturally decline and spending begins to moderate.',
-  'No-Go Years': 'The late stage of retirement marked by reduced mobility, increased rest, and higher healthcare-related expenses.'
-}
 </script>
 
 <template>
 <div class="flex flex-col items-center space-y-4">
   <div class="text-center space-y-1">
     <h3
-    :style="{ borderColor: STAGE_COLORS[stage] }"
+    :style="{ borderColor: color }"
     class="text-sm lg:text-md border border-2 ps-3 pe-6 py-1 rounded-lg relative"
     >
-      {{ stage }}
+      {{ name }}
       <div class="absolute top-0 right-2" >
         <IconToolTip position="top">
           <template #icon>
@@ -38,7 +31,7 @@ const stageDescription: Record<StageName, string> = {
             </svg>
           </template>
 
-          {{ stageDescription[stage] }}
+          {{ description }}
         </IconToolTip>
       </div>
     </h3>

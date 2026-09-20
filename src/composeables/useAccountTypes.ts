@@ -11,6 +11,11 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   brokerage: 'Brokerage',
 };
 
+// Shared display order for anywhere accounts are grouped/bucketed by type
+// (e.g. PortfolioSummary's by-type columns, StageCard's withdrawal-share
+// grouping).
+export const ACCOUNT_TYPE_ORDER: AccountType[] = ['traditional', 'roth', 'brokerage'];
+
 export interface AccountTypeRules {
   /** One or two sentence summary of how contributions/growth/withdrawals are taxed. */
   taxDescription: string;

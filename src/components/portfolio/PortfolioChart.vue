@@ -4,12 +4,36 @@ import { computed, onBeforeUnmount } from 'vue';
 import { format } from 'd3-format';
 
 import PlotFigure from '@/components/projection/PlotFigure.vue';
-import { STAGE_NAMES, STAGE_COLORS } from '@/composeables/useStages';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
+import { ACCUMULATION_ID, ACCUMULATION_LABEL, ACCUMULATION_COLOR, stageForAge } from '@/composeables/useStages';
 import type { PortfolioProjectionRow } from '@/composeables/usePortfolioProjection';
 
 const props = defineProps<{
   rows: PortfolioProjectionRow[];
 }>();
+
+const retirementPlan = useRetirementPlanStore();
+
+// The fill/legend domain is built from whichever stages actually exist
+// rather than a fixed list — a stage's own color travels with it. Keyed by
+// id (not name) since a user is free to give two stages the same name.
+const stageDomain = computed(() => [ACCUMULATION_ID, ...retirementPlan.stages.map((s) => s.id)]);
+const stageRange = computed(() => [ACCUMULATION_COLOR, ...retirementPlan.stages.map((s) => s.color)]);
+
+// Color every account's bar by which era its AGE falls in, not by whether
+// that particular account has personally unlocked yet — a row's own `stage`
+// (used for stageAggregates/the breakdown cards) stays per-account-accurate,
+// but the chart is meant to show "what part of the plan are we in," so every
+// stacked segment at a given age reads as one color even if only some
+// accounts are actually being drawn from that year.
+function stageIdAtAge(age: number): string {
+  return stageForAge(retirementPlan.stages, age)?.id ?? ACCUMULATION_ID;
+}
+
+function nameForStage(stageId: string): string {
+  if (stageId === ACCUMULATION_ID) return ACCUMULATION_LABEL;
+  return retirementPlan.stages.find((s) => s.id === stageId)?.name || 'Untitled Stage';
+}
 
 const dollars = format('$,.0f');
 
@@ -66,15 +90,16 @@ onBeforeUnmount(() => detachFocus?.());
     marginLeft: 70,
     y: { ticks: 5, tickFormat: '$,.1s', label: null },
     x: { ticks: ageBin, label: null },
-    color: { domain: STAGE_NAMES, range: STAGE_NAMES.map((s) => STAGE_COLORS[s]) },
+    color: { domain: stageDomain, range: stageRange },
     style: { fontSize: '22px' },
     marks: [
       Plot.barY(rows, {
         x: 'age',
         y: 'balance',
-        fill: 'stage',
         // One bar per account per age, stacked — total height is the
-        // combined portfolio balance, colored by each account's own stage.
+        // combined portfolio balance, every segment at a given age colored
+        // by that age's own stage (see stageIdAtAge above).
+        fill: (d) => stageIdAtAge(d.age),
         tip: {
           fontSize: 15,
           format: {
@@ -90,7 +115,7 @@ onBeforeUnmount(() => detachFocus?.());
         channels: {
           Age: 'age',
           Account: 'accountName',
-          Stage: 'stage',
+          Stage: (d) => nameForStage(stageIdAtAge(d.age)),
           Balance: 'balance',
         },
       }),

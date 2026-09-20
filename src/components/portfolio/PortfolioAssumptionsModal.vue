@@ -108,9 +108,9 @@ const dollars = format('$,.0f');
 
     <div v-if="currentStep === 0" class="space-y-4">
       <p class="text-sm text-gray-400">
-        Shared across every account in your portfolio — each account has its own balance, growth
-        rate, and withdrawal share on top of these. Retirement-plan specifics (retirement age,
-        stage lengths, withdrawal rates) live in the Retirement Plan section below.
+        Shared across every account in your portfolio — each account has its own balance and
+        growth rate on top of these. Retirement-plan specifics (your stages, when each one
+        begins, and how much you'll draw down) live in the Retirement Plan section below.
       </p>
 
       <div class="flex flex-wrap gap-4">

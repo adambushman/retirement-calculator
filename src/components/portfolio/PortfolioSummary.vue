@@ -4,8 +4,8 @@ import { format } from 'd3-format';
 
 import ToggleSwitch from '@/volt/ToggleSwitch.vue';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
-import { useAccountStore, type AccountType } from '@/stores/useAccountStore';
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
+import { useAccountStore } from '@/stores/useAccountStore';
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_ORDER } from '@/composeables/useAccountTypes';
 import { balanceAtAge } from '@/composeables/useProjections';
 import CoinIcon from '@/components/icons/CoinIcon.vue';
 
@@ -46,8 +46,6 @@ const totalMonthlyContribution = computed(() =>
 const totalBalanceAtWithdrawalStart = computed(() =>
   accountStores.value.reduce((sum, s) => sum + balanceAtWithdrawalStartFor(s), 0)
 );
-
-const ACCOUNT_TYPE_ORDER: AccountType[] = ['traditional', 'roth', 'brokerage'];
 
 // One column per account type that's actually in use, rolling every account
 // of that type into a single bucket — a first cut at "the portfolio by type"

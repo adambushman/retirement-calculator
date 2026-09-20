@@ -4,7 +4,8 @@ import { ref, computed, watch } from "vue";
 import { balanceAtAge, type AnnualProjection } from '@/composeables/useProjections';
 import { usePortfolioSimulation } from '@/composeables/usePortfolioSimulation';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
-import { STAGE_ACCUMULATION, STAGE_BRIDGE, STAGE_GO_GO, STAGE_SLOW_GO, STAGE_NO_GO } from '@/composeables/useStages';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
+import { ACCUMULATION_ID, effectiveWithdrawalStartAge } from '@/composeables/useStages';
 import { ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
 import { naiveAccumulate } from '@/composeables/useNaiveAccountProjection';
 
@@ -30,28 +31,17 @@ function defineAccountStore(id: string, persist: boolean) {
   const annualIncome = computed(() => assumptions.annualIncome);
   const annualRaises = computed(() => assumptions.annualRaises);
   const lifeExpectancy = computed(() => assumptions.lifeExpectancy);
-  const retirementAge = computed(() => assumptions.retirementAge);
   const annualInflation = computed(() => assumptions.annualInflation);
-  // Bridge/Go/Slow/No-Go withdrawal rates and stage lengths are
-  // portfolio-wide too (edit via usePortfolioAssumptionsStore).
-  const incomeReplacementBridge = computed(() => assumptions.incomeReplacementBridge);
-  const incomeReplacementGoGo = computed(() => assumptions.incomeReplacementGoGo);
-  const incomeReplacementSlowGo = computed(() => assumptions.incomeReplacementSlowGo);
-  const incomeReplacementNoGo = computed(() => assumptions.incomeReplacementNoGo);
-  const retirementBoundaries = computed(() => assumptions.retirementBoundaries);
-  const yearsInGoGo = computed(() => assumptions.yearsInGoGo);
-  const yearsInSlowGo = computed(() => assumptions.yearsInSlowGo);
-  const yearsInNoGo = computed(() => assumptions.yearsInNoGo);
+
+  // The retirementAge replacement — see useRetirementPlanStore. Falls back
+  // to lifeExpectancy when the user has deleted every stage, so nothing
+  // downstream ever treats "no stages" as "retiring today".
+  const retirementPlan = useRetirementPlanStore();
+  const firstStageStartAge = computed(() => retirementPlan.firstStageStartAge ?? lifeExpectancy.value);
 
   // Base reactive values
   const accountType = ref<AccountType>('traditional');
   const ownerName = ref<string>('');
-  const withdrawalStartAge = ref<number>(60);
-  // How much of the portfolio's target income-replacement dollar amount (in
-  // whichever stage this account is eligible for) this account is
-  // responsible for withdrawing — see the redesign notes; a portfolio's
-  // accounts don't need to sum to 100 and nothing enforces that yet.
-  const withdrawalShare = ref<number>(100);
   const currentBalance = ref<number>(10000);
   // Savings/contribution rate can be expressed as a flat monthly dollar
   // amount or as a percent of (portfolio-level) annual income — see
@@ -89,26 +79,26 @@ function defineAccountStore(id: string, persist: boolean) {
     return inflationAdjChoice.value ? "inflation-adjusted" : "raw";
   });
 
-  // How many years this account actually spends contributing: it stops at
-  // whichever comes first, its own withdrawal start age or the portfolio's
-  // Retirement Age (see computePortfolioSimulation's contributingCutoffAge).
-  const yearsUntilRetirement = computed(() =>
-    Math.min(withdrawalStartAge.value, retirementAge.value) - ageToday.value
-  );
+  // No longer a standalone editable field — an account's effective
+  // withdrawal start age is entirely derived from the plan: the start age
+  // of the earliest stage where this account's own share of that stage's
+  // target is above 0% (see StageCard.vue's "Withdrawal Share by Account").
+  // Infinity when no stage ever draws on this account at all (it never
+  // withdraws — see useAccountProjection.ts, which treats that exactly like
+  // any other age that never arrives within the modeled timeline).
+  const withdrawalStartAge = computed(() => effectiveWithdrawalStartAge(retirementPlan.stages, id));
 
-  // Traditional/Roth accounts can't withdraw before 59; a taxable brokerage
-  // can be tapped any time from today; nothing can be later than life
-  // expectancy. See the watch below, which clamps the value back in range
-  // whenever account type or the portfolio ages change.
-  const withdrawalStartAgeBounds = computed(() => ({
-    min: accountType.value === 'brokerage' ? ageToday.value : 59,
-    max: lifeExpectancy.value,
-  }));
+  // How many years this account actually spends contributing: it stops
+  // exactly when withdrawals begin from it, its own effective withdrawal
+  // start age (see computePortfolioSimulation's contributingCutoffAge).
+  const yearsUntilRetirement = computed(() => withdrawalStartAge.value - ageToday.value);
 
   // Traditional/Roth can't withdraw before 59; a taxable Brokerage account
   // can be tapped any time from today; nothing can be later than life
   // expectancy. Only relevant for Brokerage (Traditional/Roth ignore
-  // naiveWithdrawalAge entirely) — mirrors withdrawalStartAgeBounds.
+  // naiveWithdrawalAge entirely) — this is the *naive* onboarding
+  // projection's own age, unrelated to the real, now-derived
+  // withdrawalStartAge above.
   const naiveWithdrawalAgeBounds = computed(() => ({
     min: ageToday.value,
     max: lifeExpectancy.value,
@@ -205,8 +195,8 @@ function defineAccountStore(id: string, persist: boolean) {
   );
 
   // The shared, year-by-year timeline engine — see useAccountProjection.ts
-  // for how contributing/dormant/Bridge/Go-Go/Slow-Go/No-Go are determined
-  // per year, and usePortfolioSimulation.ts for how every account's
+  // for how contributing/dormant/withdrawing years are determined per year,
+  // and usePortfolioSimulation.ts for how every account's
   // withdrawal is run jointly (so a depleted sibling's share gets picked up
   // by this account instead of just going unmet). Called lazily here, rather
   // than at store setup time, so a self-reference back to this same account
@@ -225,61 +215,35 @@ function defineAccountStore(id: string, persist: boolean) {
     }));
   });
 
-  const futureProjectionResults = computed(() => {
+  // Per-stage (plus Accumulation) totals for this account, keyed by stage id
+  // — replaces the old fixed set of individually-named
+  // finalGoGoBalance/totalBridgeFlow/etc. computeds with one map looped over
+  // whichever stages actually exist.
+  const stageResults = computed<Record<string, { finalBalance: number; totalFlow: number; totalGrowth: number }>>(() => {
     const arr = futureProjection.value?.[inflationPerspective.value];
-    if (!arr || arr.length === 0) {
-      return {
-        finalPreRetirementBalance: 0,
-        finalBridgeBalance: 0,
-        finalGoGoBalance: 0,
-        finalSlowGoBalance: 0,
-        finalNoGoBalance: 0,
-        totalPreRetirementFlow: 0,
-        totalPreRetirementGrowth: 0,
-        totalBridgeFlow: 0,
-        totalBridgeGrowth: 0,
-        totalGoGoFlow: 0,
-        totalGoGoGrowth: 0,
-        totalSlowGoFlow: 0,
-        totalSlowGoGrowth: 0,
-        totalNoGoFlow: 0,
-        totalNoGoGrowth: 0,
+    const ids = [ACCUMULATION_ID, ...retirementPlan.stages.map((s) => s.id)];
+
+    const result: Record<string, { finalBalance: number; totalFlow: number; totalGrowth: number }> = {};
+    for (const id of ids) {
+      if (!arr || arr.length === 0) {
+        result[id] = { finalBalance: 0, totalFlow: 0, totalGrowth: 0 };
+        continue;
+      }
+      const stageRows = arr.filter((a) => a.stage === id);
+      result[id] = {
+        finalBalance: stageRows.slice(-1)[0]?.endBalance ?? 0,
+        totalFlow: stageRows.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0),
+        totalGrowth: stageRows.reduce((sum, a) => sum + (a?.totalGrowth ?? 0), 0),
       };
     }
-
-    const finalBalance = (stageName: string) =>
-      arr.filter(a => a.stage === stageName).slice(-1)[0]?.endBalance ?? 0;
-
-    const totalFlow = (stageName: string) =>
-      arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0);
-
-    const totalGrowth = (stageName: string) =>
-      arr.filter(a => a.stage === stageName).reduce((sum, a) => sum + (a?.totalGrowth ?? 0), 0);
-
-    return {
-      finalPreRetirementBalance: finalBalance(STAGE_ACCUMULATION),
-      totalPreRetirementFlow: totalFlow(STAGE_ACCUMULATION),
-      totalPreRetirementGrowth: totalGrowth(STAGE_ACCUMULATION),
-      finalBridgeBalance: finalBalance(STAGE_BRIDGE),
-      totalBridgeFlow: totalFlow(STAGE_BRIDGE),
-      totalBridgeGrowth: totalGrowth(STAGE_BRIDGE),
-      finalGoGoBalance: finalBalance(STAGE_GO_GO),
-      totalGoGoFlow: totalFlow(STAGE_GO_GO),
-      totalGoGoGrowth: totalGrowth(STAGE_GO_GO),
-      finalSlowGoBalance: finalBalance(STAGE_SLOW_GO),
-      totalSlowGoFlow: totalFlow(STAGE_SLOW_GO),
-      totalSlowGoGrowth: totalGrowth(STAGE_SLOW_GO),
-      finalNoGoBalance: finalBalance(STAGE_NO_GO),
-      totalNoGoFlow: totalFlow(STAGE_NO_GO),
-      totalNoGoGrowth: totalGrowth(STAGE_NO_GO),
-    };
+    return result;
   });
 
   // The balance right as withdrawals begin — i.e. this account's own
-  // accumulation-phase endpoint. Not simply finalPreRetirementBalance: an
-  // account whose own withdrawal start age is later than the portfolio's
-  // Retirement Age keeps growing, untouched, through a dormant gap between
-  // the two, which finalPreRetirementBalance wouldn't capture.
+  // accumulation-phase endpoint. Not simply stageResults[ACCUMULATION_ID]'s
+  // finalBalance: an account whose own withdrawal start age is later than
+  // the first stage's start age keeps growing, untouched, through a dormant
+  // gap between the two, which that figure wouldn't capture.
   const balanceAtWithdrawalStart = computed((): number =>
     balanceAtAge(
       futureProjection.value?.[inflationPerspective.value],
@@ -295,70 +259,18 @@ function defineAccountStore(id: string, persist: boolean) {
       return 0
     }
 
-    const retirement = arr.filter(a => a.stage !== STAGE_ACCUMULATION);
+    const retirement = arr.filter(a => a.stage !== ACCUMULATION_ID);
     if (retirement.length === 0) return 0;
     return retirement.reduce((sum, a) => sum + (a?.annualFlow ?? 0), 0) / retirement.length / 12;
   });
 
-  const finalPreRetirementBalance = computed(
-    (): number => futureProjectionResults.value.finalPreRetirementBalance
-  );
-  const finalBridgeBalance = computed(
-    (): number => futureProjectionResults.value.finalBridgeBalance
-  );
-  const finalGoGoBalance = computed(
-    (): number => futureProjectionResults.value.finalGoGoBalance
-  );
-  const finalSlowGoBalance = computed(
-    (): number => futureProjectionResults.value.finalSlowGoBalance
-  );
-  const finalNoGoBalance = computed(
-    (): number => futureProjectionResults.value.finalNoGoBalance
-  );
-
-  const totalPreRetirementFlow = computed(
-    (): number => futureProjectionResults.value.totalPreRetirementFlow
-  );
-
   // Derived directly from the balances/contributions above (rather than
-  // totalPreRetirementGrowth) so it stays exact even across a dormant gap:
-  // today's balance + contributed + grew === balance at withdrawal start.
+  // stageResults' Accumulation totalGrowth) so it stays exact even across a
+  // dormant gap: today's balance + contributed + grew === balance at
+  // withdrawal start.
   const growthToWithdrawalStart = computed((): number =>
-    balanceAtWithdrawalStart.value - currentBalance.value - totalPreRetirementFlow.value
+    balanceAtWithdrawalStart.value - currentBalance.value - (stageResults.value[ACCUMULATION_ID]?.totalFlow ?? 0)
   );
-  const totalBridgeFlow = computed(
-    (): number => futureProjectionResults.value.totalBridgeFlow
-  );
-  const totalGoGoFlow = computed(
-    (): number => futureProjectionResults.value.totalGoGoFlow
-  );
-  const totalSlowGoFlow = computed(
-    (): number => futureProjectionResults.value.totalSlowGoFlow
-  );
-  const totalNoGoFlow = computed(
-    (): number => futureProjectionResults.value.totalNoGoFlow
-  );
-
-  const totalPreRetirementGrowth = computed(
-    (): number => futureProjectionResults.value.totalPreRetirementGrowth
-  );
-  const totalBridgeGrowth = computed(
-    (): number => futureProjectionResults.value.totalBridgeGrowth
-  );
-  const totalGoGoGrowth = computed(
-    (): number => futureProjectionResults.value.totalGoGoGrowth
-  );
-  const totalSlowGoGrowth = computed(
-    (): number => futureProjectionResults.value.totalSlowGoGrowth
-  );
-  const totalNoGoGrowth = computed(
-    (): number => futureProjectionResults.value.totalNoGoGrowth
-  );
-
-  watch(withdrawalStartAgeBounds, ({ min, max }) => {
-    if (withdrawalStartAge.value < min) withdrawalStartAge.value = min;
-    else if (withdrawalStartAge.value > max) withdrawalStartAge.value = max;
-  });
 
   watch(naiveWithdrawalAgeBounds, ({ min, max }) => {
     if (naiveWithdrawalAge.value < min) naiveWithdrawalAge.value = min;
@@ -374,23 +286,13 @@ function defineAccountStore(id: string, persist: boolean) {
     annualIncome,
     annualRaises,
     lifeExpectancy,
-    retirementAge,
+    firstStageStartAge,
     annualInflation,
-    incomeReplacementBridge,
-    incomeReplacementGoGo,
-    incomeReplacementSlowGo,
-    incomeReplacementNoGo,
-    retirementBoundaries,
-    yearsInGoGo,
-    yearsInSlowGo,
-    yearsInNoGo,
 
     // Account-level base values
     accountType,
     ownerName,
     withdrawalStartAge,
-    withdrawalStartAgeBounds,
-    withdrawalShare,
     currentBalance,
     contributionMode,
     savingsRate,
@@ -427,24 +329,9 @@ function defineAccountStore(id: string, persist: boolean) {
     futureProjection,
     projectionGraph,
     avgMonthlyWithdrawal,
-    futureProjectionResults,
+    stageResults,
     balanceAtWithdrawalStart,
     growthToWithdrawalStart,
-    finalPreRetirementBalance,
-    finalBridgeBalance,
-    finalGoGoBalance,
-    finalSlowGoBalance,
-    finalNoGoBalance,
-    totalPreRetirementFlow,
-    totalBridgeFlow,
-    totalGoGoFlow,
-    totalSlowGoFlow,
-    totalNoGoFlow,
-    totalPreRetirementGrowth,
-    totalBridgeGrowth,
-    totalGoGoGrowth,
-    totalSlowGoGrowth,
-    totalNoGoGrowth,
   };
   }, persist ? { persist: true } : {});
 }
@@ -476,16 +363,15 @@ export type AccountStoreInstance = ReturnType<typeof useAccountStore>;
 
 /**
  * Copies every account-level editable field from one account store to
- * another. Portfolio-level fields (ageToday, annualIncome, the withdrawal
- * rates/stage lengths, etc.) are read-only aliases onto the single shared
- * usePortfolioAssumptionsStore, so both source and target already see the
- * same values — nothing to copy there.
+ * another. Portfolio-level fields (ageToday, annualIncome, etc.) are
+ * read-only aliases onto the single shared usePortfolioAssumptionsStore, and
+ * withdrawalStartAge is a derived read-only value sourced from the
+ * retirement plan's stages (see effectiveWithdrawalStartAge) — neither is
+ * copyable, nothing to do for them here.
  */
 export function copyAccountFields(source: AccountStoreInstance, target: AccountStoreInstance) {
   target.accountType = source.accountType;
   target.ownerName = source.ownerName;
-  target.withdrawalStartAge = source.withdrawalStartAge;
-  target.withdrawalShare = source.withdrawalShare;
   target.currentBalance = source.currentBalance;
   target.contributionMode = source.contributionMode;
   target.savingsRate = source.savingsRate;

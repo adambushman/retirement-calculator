@@ -17,12 +17,15 @@ import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
 import PortfolioAssumptionsModal from '@/components/portfolio/PortfolioAssumptionsModal.vue';
+import StageFormModal from '@/components/portfolio/StageFormModal.vue';
 
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 
 const portfolio = usePortfolioStore();
 const assumptions = usePortfolioAssumptionsStore();
+const retirementPlan = useRetirementPlanStore();
 
 // Every section header (Context, Accounts, Portfolio, Retirement Plan,
 // Summary) always renders — this is the walk-through a first-time user
@@ -51,7 +54,16 @@ const showResetConfirm = ref(false);
 function resetPortfolio() {
   portfolio.clearAllAccounts();
   assumptions.resetToDefaults();
+  retirementPlan.resetToDefaults();
   showResetConfirm.value = false;
+}
+
+const showStageModal = ref(false);
+
+const showClearStagesConfirm = ref(false);
+function clearStages() {
+  retirementPlan.clearStages();
+  showClearStagesConfirm.value = false;
 }
 
 // Which cards are expanded (open). Several can be open at once.
@@ -193,13 +205,32 @@ function closeAccountModal(createdAccountId?: string) {
     </div>
 
     <div>
-      <BodySectionHeader>
-        Retirement Plan
-        <template #subtitle>
-          Where you start shaping what retirement actually looks like — when it begins, how long
-          each stage lasts, and how much you'll draw down.
-        </template>
-      </BodySectionHeader>
+      <div class="flex items-start justify-between mb-4 gap-4">
+        <BodySectionHeader>
+          Retirement Plan
+          <template #subtitle>
+            Where you start shaping what retirement actually looks like — add a stage for each
+            stretch of life with its own withdrawal rate and account mix.
+          </template>
+        </BodySectionHeader>
+        <div v-if="accountsDone" class="flex items-center gap-2">
+          <SecondaryButton rounded aria-label="Add stage" @click="showStageModal = true">
+            <template #icon>
+              <PlusIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+          <SecondaryButton
+            v-if="retirementPlan.stages.length"
+            rounded
+            aria-label="Clear all stages"
+            @click="showClearStagesConfirm = true"
+          >
+            <template #icon>
+              <TrashIcon style="width: 14px; height: 14px" />
+            </template>
+          </SecondaryButton>
+        </div>
+      </div>
       <RetirementPlanInputs v-if="accountsDone" />
       <SectionPlaceholder
         v-else
@@ -236,6 +267,8 @@ function closeAccountModal(createdAccountId?: string) {
       @close="closeAccountModal"
     />
 
+    <StageFormModal v-if="showStageModal" @close="showStageModal = false" />
+
     <ConfirmModal
       v-if="showClearAllConfirm"
       title="Clear All Accounts?"
@@ -252,6 +285,15 @@ function closeAccountModal(createdAccountId?: string) {
       confirm-label="Reset"
       @confirm="resetPortfolio"
       @cancel="showResetConfirm = false"
+    />
+
+    <ConfirmModal
+      v-if="showClearStagesConfirm"
+      title="Clear All Stages?"
+      message="This removes every stage from your retirement plan — Context, Accounts, and Portfolio assumptions are untouched. This can't be undone."
+      confirm-label="Clear All"
+      @confirm="clearStages"
+      @cancel="showClearStagesConfirm = false"
     />
   </div>
 </template>

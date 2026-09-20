@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 
 // Assumptions shared by every account in the portfolio (as opposed to
 // account-level fields like balance, growth rate, or withdrawal share, which
@@ -63,76 +63,6 @@ function definePortfolioAssumptionsStore(id: string, persist: boolean) {
     const lifeExpectancy = ref<number>(90);
     const annualInflation = ref<number>(2.5);
 
-    // The point contributions/income stop for every account; also the end of
-    // the Bridge stage (see useAccountStore's per-account withdrawal start
-    // age, which may fall before this for an early-access account).
-    const retirementAge = ref<number>(60);
-
-    // Income-replacement rates by stage, shared by every account.
-    const incomeReplacementBridge = ref<number>(30);
-    const incomeReplacementGoGo = ref<number>(125);
-    const incomeReplacementSlowGo = ref<number>(100);
-    const incomeReplacementNoGo = ref<number>(75);
-
-    const overrideRetirementBoundaries = ref<number[] | null>(null);
-
-    const yearsInRetirement = computed(() => lifeExpectancy.value - retirementAge.value);
-
-    // Go-Go/Slow-Go/No-Go boundary ages: defaults to a 40/40/20 split of the
-    // retirement span, but stores an override when the slider is moved (see
-    // the watch below, which clears it if the ages move it out of range).
-    const retirementBoundaries = computed<number[]>({
-      get() {
-        if (overrideRetirementBoundaries.value) {
-          return overrideRetirementBoundaries.value;
-        }
-
-        const baseYrs = (yearsInRetirement.value * 2.0) / 5.0;
-
-        return [
-          Math.floor(baseYrs),
-          Math.floor(baseYrs) * 2
-        ].map((yr) => yr + retirementAge.value);
-      },
-
-      set(newValue: number[]) {
-        overrideRetirementBoundaries.value = newValue;
-      }
-    });
-
-    const yearsInGoGo = computed(() => {
-      const def = retirementAge.value;
-      return (retirementBoundaries.value[0] ?? def) - def;
-    });
-
-    const yearsInSlowGo = computed(() => {
-      const def = yearsInGoGo.value + retirementAge.value;
-      return (retirementBoundaries.value[1] ?? def) - def;
-    });
-
-    const yearsInNoGo = computed(
-      () => yearsInRetirement.value - yearsInSlowGo.value - yearsInGoGo.value
-    );
-
-    watch(
-      [yearsInRetirement, retirementAge, lifeExpectancy],
-      () => {
-        if (!overrideRetirementBoundaries.value) return;
-
-        const [b1, b2] = overrideRetirementBoundaries.value;
-
-        const min = retirementAge.value;
-        const max = lifeExpectancy.value;
-
-        const outOfRange = (b1 ?? 0) < min || (b2 ?? 0) > max;
-
-        if (outOfRange) {
-          overrideRetirementBoundaries.value = null;
-        }
-      },
-      { deep: false }
-    );
-
     function markDescribed() {
       isDescribed.value = true;
     }
@@ -161,12 +91,6 @@ function definePortfolioAssumptionsStore(id: string, persist: boolean) {
       ageToday.value = 25;
       lifeExpectancy.value = 90;
       annualInflation.value = 2.5;
-      retirementAge.value = 60;
-      incomeReplacementBridge.value = 30;
-      incomeReplacementGoGo.value = 125;
-      incomeReplacementSlowGo.value = 100;
-      incomeReplacementNoGo.value = 75;
-      overrideRetirementBoundaries.value = null;
     }
 
     return {
@@ -179,16 +103,6 @@ function definePortfolioAssumptionsStore(id: string, persist: boolean) {
       ageToday,
       lifeExpectancy,
       annualInflation,
-      retirementAge,
-      incomeReplacementBridge,
-      incomeReplacementGoGo,
-      incomeReplacementSlowGo,
-      incomeReplacementNoGo,
-      retirementBoundaries,
-      yearsInRetirement,
-      yearsInGoGo,
-      yearsInSlowGo,
-      yearsInNoGo,
       markDescribed,
       resetToDefaults,
     };
@@ -232,10 +146,4 @@ export function copyAssumptionsFields(
   target.ageToday = source.ageToday;
   target.lifeExpectancy = source.lifeExpectancy;
   target.annualInflation = source.annualInflation;
-  target.retirementAge = source.retirementAge;
-  target.incomeReplacementBridge = source.incomeReplacementBridge;
-  target.incomeReplacementGoGo = source.incomeReplacementGoGo;
-  target.incomeReplacementSlowGo = source.incomeReplacementSlowGo;
-  target.incomeReplacementNoGo = source.incomeReplacementNoGo;
-  target.retirementBoundaries = [...source.retirementBoundaries];
 }

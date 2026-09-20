@@ -3,14 +3,15 @@ import { computed } from 'vue';
 
 import SingleStageSummary from '@/components/stage-summary/SingleStageSummary.vue';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { usePortfolioCoverage } from '@/composeables/usePortfolioCoverage';
 import type { StageAggregate } from '@/composeables/usePortfolioProjection';
 import {
-  STAGE_ACCUMULATION,
-  STAGE_BRIDGE,
-  STAGE_GO_GO,
-  STAGE_SLOW_GO,
-  STAGE_NO_GO,
+  ACCUMULATION_ID,
+  ACCUMULATION_LABEL,
+  ACCUMULATION_COLOR,
+  ACCUMULATION_DESCRIPTION,
+  stageEndAge,
 } from '@/composeables/useStages';
 
 const props = defineProps<{
@@ -18,7 +19,8 @@ const props = defineProps<{
 }>();
 
 const assumptions = usePortfolioAssumptionsStore();
-const { bridgeStartAge, accumulationEndAge } = usePortfolioCoverage();
+const retirementPlan = useRetirementPlanStore();
+const { accumulationEndAge } = usePortfolioCoverage();
 
 // Average monthly contribution/withdrawal for a stage: its total flow spread
 // across the months the stage actually spans.
@@ -28,47 +30,31 @@ const perMonth = (totalFlow: number, years: number) =>
 const aggregateFor = (stage: string) =>
   props.stageAggregates.find((s) => s.stage === stage) ?? { finalBalance: 0, totalFlow: 0, totalGrowth: 0 };
 
-// Go-Go/Slow-Go/No-Go age ranges are already unambiguous (shared portfolio
-// boundaries); Accumulation and Bridge get portfolio-wide ranges too —
-// Accumulation runs until the last account unlocks (which is Retirement Age
-// unless some account starts later), Bridge from the earliest account's own
-// start age (see usePortfolioCoverage) to Retirement Age.
+// Accumulation, followed by every user-defined stage in order — each stage's
+// own age range falls out of its startAge and derived endAge, no manual
+// boundary bookkeeping needed here.
 const stages = computed(() => {
-  const [goGoEndAge, slowGoEndAge] = assumptions.retirementBoundaries;
-
   const list = [
     {
-      stage: STAGE_ACCUMULATION,
+      stageId: ACCUMULATION_ID,
+      name: ACCUMULATION_LABEL,
+      color: ACCUMULATION_COLOR,
+      description: ACCUMULATION_DESCRIPTION,
       years: [assumptions.ageToday, accumulationEndAge.value - 1],
-      ...aggregateFor(STAGE_ACCUMULATION),
+      ...aggregateFor(ACCUMULATION_ID),
     },
   ];
 
-  if (bridgeStartAge.value !== null) {
+  retirementPlan.stages.forEach((stage, index) => {
     list.push({
-      stage: STAGE_BRIDGE,
-      years: [bridgeStartAge.value, assumptions.retirementAge - 1],
-      ...aggregateFor(STAGE_BRIDGE),
+      stageId: stage.id,
+      name: stage.name || 'Untitled Stage',
+      color: stage.color,
+      description: stage.description,
+      years: [stage.startAge, stageEndAge(retirementPlan.stages, index, assumptions.lifeExpectancy) - 1],
+      ...aggregateFor(stage.id),
     });
-  }
-
-  list.push(
-    {
-      stage: STAGE_GO_GO,
-      years: [assumptions.retirementAge, (goGoEndAge ?? assumptions.retirementAge) - 1],
-      ...aggregateFor(STAGE_GO_GO),
-    },
-    {
-      stage: STAGE_SLOW_GO,
-      years: [goGoEndAge ?? assumptions.retirementAge, (slowGoEndAge ?? assumptions.retirementAge) - 1],
-      ...aggregateFor(STAGE_SLOW_GO),
-    },
-    {
-      stage: STAGE_NO_GO,
-      years: [slowGoEndAge ?? assumptions.retirementAge, assumptions.lifeExpectancy - 1],
-      ...aggregateFor(STAGE_NO_GO),
-    },
-  );
+  });
 
   return list;
 });
@@ -78,8 +64,10 @@ const stages = computed(() => {
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
     <SingleStageSummary
       v-for="s in stages"
-      :key="s.stage"
-      :stage="s.stage"
+      :key="s.stageId"
+      :name="s.name"
+      :color="s.color"
+      :description="s.description"
       :finalBalance="s.finalBalance"
       :totalFlow="s.totalFlow"
       :avgMonthlyFlow="perMonth(s.totalFlow, s.years[1]! - s.years[0]! + 1)"

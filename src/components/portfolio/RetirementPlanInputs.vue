@@ -2,18 +2,22 @@
 import { computed } from 'vue';
 
 import InputNumber from '@/volt/InputNumber.vue';
-import Slider from '@/volt/Slider.vue';
-import SliderLabel from '@/components/SliderLabel.vue';
+import StageCard from '@/components/portfolio/StageCard.vue';
 
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
+import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
+import { ACCUMULATION_LABEL, ACCUMULATION_COLOR, stageEndAge } from '@/composeables/useStages';
 
-// Unlike Context/Accounts, this section edits the real portfolio assumptions
-// store directly — no draft-then-commit modal — so every change here takes
-// effect immediately across the whole app.
+// Unlike Context/Accounts, this section edits the real retirement-plan and
+// account stores directly — no draft-then-commit modal — so every change
+// here (including adding a stage via the "+" button in PortfolioView's
+// header, which opens StageFormModal) takes effect immediately across the
+// whole app.
 const assumptions = usePortfolioAssumptionsStore();
+const retirementPlan = useRetirementPlanStore();
 
 // PrimeVue's InputNumber only writes to v-model on blur/Enter/Tab/arrow-step
 // — plain digit-by-digit typing updates the displayed text but leaves the
@@ -23,15 +27,42 @@ const assumptions = usePortfolioAssumptionsStore();
 // PrimeVue's own eager `input` event (fired on every keystroke) and writes
 // straight through immediately.
 
-// Withdrawal Start Age / Withdrawal Share / Growth Rate (During Withdrawals)
-// used to be edited on a third "Retirement Plan" step of the account wizard
-// (StepRetirementPlan.vue, now removed) and shown on the account's own card.
-// Both moved here — reviewing an account's own balance/contribution setup
-// shouldn't require thinking about retirement-phase details yet, and this is
-// where "how retirement looks" belongs for every account. Since the wizard
-// step is gone, this is now the *only* place these fields are editable, so
-// each is a live InputNumber straight against the account's own store,
-// matching every other field in this section.
+// A read-only "how this lines up" preview: Accumulation followed by every
+// stage, each segment's width proportional to its own span of years —
+// mirrors the linked-boundary feel of a single slider without a custom
+// multi-handle control (PrimeVue's Slider tops out at 2 handles).
+const timelineSegments = computed(() => {
+  const total = assumptions.lifeExpectancy - assumptions.ageToday;
+  if (total <= 0) return [];
+
+  const firstStart = retirementPlan.stages[0]?.startAge ?? assumptions.lifeExpectancy;
+  const segments = [
+    {
+      key: 'accumulation',
+      label: ACCUMULATION_LABEL,
+      color: ACCUMULATION_COLOR,
+      years: firstStart - assumptions.ageToday,
+    },
+    ...retirementPlan.stages.map((stage, index) => ({
+      key: stage.id,
+      label: stage.name || 'Untitled Stage',
+      color: stage.color,
+      years: stageEndAge(retirementPlan.stages, index, assumptions.lifeExpectancy) - stage.startAge,
+    })),
+  ];
+
+  return segments
+    .filter((s) => s.years > 0)
+    .map((s) => ({ ...s, widthPercent: (s.years / total) * 100 }));
+});
+
+// Growth Rate (During Withdrawals) applies to an account regardless of which
+// stage it's in, so it stays here as a single per-account setting rather
+// than repeated on every stage card. Withdrawal Start Age isn't a setting at
+// all anymore — it's read-only, derived from whichever stage first gives
+// this account a nonzero Withdrawal Share (see StageCard.vue and
+// useStages.ts's effectiveWithdrawalStartAge), shown next to the account
+// name purely for visibility.
 const portfolio = usePortfolioStore();
 const accountRows = computed(() =>
   portfolio.accounts.map((meta) => {
@@ -49,131 +80,47 @@ const accountRows = computed(() =>
 
 <template>
   <div class="space-y-6">
-    <div>
-      <label class="block text-sm mb-2 text-gray-400" for="retirement-age-input">
-        Retirement Age
-      </label>
-      <InputNumber
-        v-model.number="assumptions.retirementAge"
-        @input="$event.value !== null && (assumptions.retirementAge = $event.value)"
-        inputId="retirement-age-input"
-        size="small"
+    <div v-if="timelineSegments.length" class="flex w-full h-3 rounded-full overflow-hidden">
+      <div
+        v-for="segment in timelineSegments"
+        :key="segment.key"
+        :style="{ width: segment.widthPercent + '%', backgroundColor: segment.color }"
+        :title="`${segment.label} (${segment.years} yrs)`"
       />
     </div>
 
-    <div>
-      <label class="block text-sm mb-2 text-gray-400" for="retirement-stage-length-input">
-        Retirement Stage Length (Yrs)
-      </label>
-      <SliderLabel
-        :yearsInGoGo="assumptions.yearsInGoGo"
-        :yearsInSlowGo="assumptions.yearsInSlowGo"
-        :yearsInNoGo="assumptions.yearsInNoGo"
-      />
-      <Slider
-        v-model="assumptions.retirementBoundaries"
-        class="w-full max-w-sm mt-0"
-        inputId="retirement-stage-length-input"
-        range
-        :min="assumptions.retirementAge"
-        :max="assumptions.lifeExpectancy"
+    <div v-if="retirementPlan.stages.length" class="space-y-4">
+      <StageCard
+        v-for="(stage, index) in retirementPlan.stages"
+        :key="stage.id"
+        :stage="stage"
+        :index="index"
       />
     </div>
-
-    <div class="flex flex-wrap gap-4">
-      <div>
-        <label class="block text-sm mb-2 text-gray-400" for="retirement-bridge-rate-input">
-          Bridge Withdrawal Rate
-        </label>
-        <InputNumber
-          v-model.number="assumptions.incomeReplacementBridge"
-          @input="$event.value !== null && (assumptions.incomeReplacementBridge = $event.value)"
-          inputId="retirement-bridge-rate-input"
-          size="small"
-          suffix="%"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm mb-2 text-gray-400" for="retirement-gogo-rate-input">
-          Go-Go Withdrawal Rate
-        </label>
-        <InputNumber
-          v-model.number="assumptions.incomeReplacementGoGo"
-          @input="$event.value !== null && (assumptions.incomeReplacementGoGo = $event.value)"
-          inputId="retirement-gogo-rate-input"
-          size="small"
-          suffix="%"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm mb-2 text-gray-400" for="retirement-slowgo-rate-input">
-          Slow-Go Withdrawal Rate
-        </label>
-        <InputNumber
-          v-model.number="assumptions.incomeReplacementSlowGo"
-          @input="$event.value !== null && (assumptions.incomeReplacementSlowGo = $event.value)"
-          inputId="retirement-slowgo-rate-input"
-          size="small"
-          suffix="%"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm mb-2 text-gray-400" for="retirement-nogo-rate-input">
-          No-Go Withdrawal Rate
-        </label>
-        <InputNumber
-          v-model.number="assumptions.incomeReplacementNoGo"
-          @input="$event.value !== null && (assumptions.incomeReplacementNoGo = $event.value)"
-          inputId="retirement-nogo-rate-input"
-          size="small"
-          suffix="%"
-        />
-      </div>
-    </div>
+    <p v-else class="text-sm text-gray-500">
+      No stages yet — everything stays in Accumulation all the way to life expectancy. Use the
+      "+" button above to add your first stage.
+    </p>
 
     <div v-if="accountRows.length">
       <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Per-Account Withdrawal Settings</h4>
       <div class="space-y-6">
         <div v-for="row in accountRows" :key="row.id">
-          <div class="flex items-center gap-1.5 text-sm font-medium mb-2">
+          <div class="flex flex-wrap items-center gap-1.5 text-sm font-medium mb-2">
             <span>{{ row.name }}</span>
             <span class="text-gray-400 flex items-center gap-1">
               | <component :is="row.typeIcon" style="width: 14px; height: 14px" /> {{ row.typeLabel }}
             </span>
+            <span class="text-gray-400 font-normal text-xs">
+              ·
+              {{
+                Number.isFinite(row.account.withdrawalStartAge)
+                  ? `Withdraws from age ${row.account.withdrawalStartAge}`
+                  : "Never withdraws — set a Withdrawal Share above 0% on some stage"
+              }}
+            </span>
           </div>
           <div class="flex flex-wrap gap-4">
-            <div>
-              <label class="block text-sm mb-2 text-gray-400" :for="`withdrawal-start-age-input-${row.id}`">
-                Withdrawal Start Age
-              </label>
-              <InputNumber
-                v-model.number="row.account.withdrawalStartAge"
-                @input="$event.value !== null && (row.account.withdrawalStartAge = $event.value)"
-                :inputId="`withdrawal-start-age-input-${row.id}`"
-                size="small"
-                :min="row.account.withdrawalStartAgeBounds.min"
-                :max="row.account.withdrawalStartAgeBounds.max"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm mb-2 text-gray-400" :for="`withdrawal-share-input-${row.id}`">
-                Withdrawal Share
-              </label>
-              <InputNumber
-                v-model.number="row.account.withdrawalShare"
-                @input="$event.value !== null && (row.account.withdrawalShare = $event.value)"
-                :inputId="`withdrawal-share-input-${row.id}`"
-                size="small"
-                suffix="%"
-                :min="0"
-                :max="100"
-              />
-            </div>
-
             <div>
               <label class="block text-sm mb-2 text-gray-400" :for="`intra-retire-growth-input-${row.id}`">
                 Growth Rate (During Withdrawals)

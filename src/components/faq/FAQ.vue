@@ -42,7 +42,7 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
       <template #answer>
         Retirement behavior rarely ends the same way it starts. Goals, activity, health, and funds evolve over time. Therefore, it's helpful to think in periods of common behavior.
         <br><br>
-        The industry commonly refers to three (3) stages: "Go-Go Years", "Slow-Go Years", and "No-Go Years". You pick how long each of those last and what spending looks like therein.
+        The industry commonly refers to three (3) stages: "Go-Go Years", "Slow-Go Years", and "No-Go Years" — offered here as starting points. You define however many stages fit your own plan, name and describe each one, and set how long it lasts, its withdrawal rate, and which accounts fund it.
       </template>
     </QuestionAnswer>
 
