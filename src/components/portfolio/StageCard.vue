@@ -6,6 +6,8 @@ import ChevronUpIcon from '@primevue/icons/chevronup';
 
 import InputNumber from '@/volt/InputNumber.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
+import ToggleSwitch from '@/volt/ToggleSwitch.vue';
+import ShareSlider from '@/components/portfolio/ShareSlider.vue';
 
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
@@ -51,16 +53,35 @@ function remove() {
 
 // Flattened (not grouped) — still ordered by account type via
 // ACCOUNT_TYPE_ORDER, but each row carries its own type icon rather than
-// sitting under a separate group header, so the label next to each input can
-// just be "icon + account name" instead of repeating the type name.
+// sitting under a separate group header, so the label next to each toggle can
+// just be "icon + account name" instead of repeating the type name. The
+// slider's segments follow this same order, so they read left to right the
+// way the toggles read top to bottom.
 const shareAccounts = computed(() =>
   ACCOUNT_TYPE_ORDER.flatMap((type) =>
     portfolio.accounts
-      .map((meta) => ({ id: meta.id, name: meta.name, store: useAccountStore(meta.id) }))
+      .map((meta) => ({ id: meta.id, name: meta.name, color: meta.color, store: useAccountStore(meta.id) }))
       .filter((a) => a.store.accountType === type)
       .map((a) => ({ ...a, icon: ACCOUNT_TYPE_ICONS[type] }))
   )
 );
+
+// An account is "on" for this stage when it has a share; the shares of the
+// accounts that are on always sum to 100 (see useWithdrawalShares.ts).
+const shares = computed(() => props.stage.withdrawalShareByAccount);
+const isOn = (accountId: string) => accountId in shares.value;
+const enabledAccounts = computed(() => shareAccounts.value.filter((a) => isOn(a.id)));
+
+const sliderSegments = computed(() =>
+  enabledAccounts.value.map((a) => ({ id: a.id, label: a.name, color: a.color, value: shares.value[a.id]! }))
+);
+
+function onSharesChange(values: number[]) {
+  retirementPlan.setShares(
+    props.stage.id,
+    Object.fromEntries(enabledAccounts.value.map((a, i) => [a.id, values[i]!]))
+  );
+}
 
 const textFieldClass =
   'rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 ' +
@@ -150,30 +171,54 @@ const textFieldClass =
       </div>
 
       <div v-if="shareAccounts.length">
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3 text-sm">
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-1 text-sm">
           Withdrawal Share by Account
         </h4>
-        <div class="flex flex-wrap gap-4">
-          <div v-for="account in shareAccounts" :key="account.id">
+        <p class="text-xs text-gray-400 mb-4">
+          Toggle on the accounts this stage draws from, then drag the handles to split the income it
+          replaces between them.
+        </p>
+
+        <ShareSlider class="mb-4" :segments="sliderSegments" @change="onSharesChange" />
+
+        <div class="space-y-2">
+          <div
+            v-for="account in shareAccounts"
+            :key="account.id"
+            class="share-toggle flex items-center gap-3"
+            :style="{ '--account-color': account.color }"
+          >
+            <ToggleSwitch
+              :modelValue="isOn(account.id)"
+              @update:modelValue="(on: boolean) => retirementPlan.setAccountEnabled(stage.id, account.id, on)"
+              :inputId="`stage-share-${stage.id}-${account.id}`"
+            />
             <label
-              class="flex items-center gap-1 text-sm mb-2 text-gray-400"
+              class="flex items-center gap-1 text-sm min-w-0"
+              :class="isOn(account.id) ? '' : 'text-gray-400'"
               :for="`stage-share-${stage.id}-${account.id}`"
             >
-              <component :is="account.icon" style="width: 12px; height: 12px" />
-              {{ account.name }}
+              <component :is="account.icon" class="shrink-0" style="width: 12px; height: 12px" />
+              <span class="truncate">{{ account.name }}</span>
             </label>
-            <InputNumber
-              v-model.number="stage.withdrawalShareByAccount[account.id]"
-              @input="$event.value !== null && (stage.withdrawalShareByAccount[account.id] = $event.value)"
-              :inputId="`stage-share-${stage.id}-${account.id}`"
-              size="small"
-              suffix="%"
-              :min="0"
-              :max="100"
-            />
+            <span v-if="isOn(account.id)" class="ml-auto text-sm font-medium tabular-nums">
+              {{ shares[account.id] }}%
+            </span>
           </div>
         </div>
+
+        <p v-if="!enabledAccounts.length" class="text-xs text-gray-400 mt-3">
+          No accounts on — this stage doesn't draw anything from your accounts.
+        </p>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Each account's toggle turns that account's own color when on, matching its
+   segment in the share slider. */
+.share-toggle :deep([data-pc-name='toggleswitch'][data-p-checked='true'] [data-pc-section='slider']) {
+  background-color: var(--account-color) !important;
+}
+</style>

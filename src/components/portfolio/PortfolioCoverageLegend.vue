@@ -17,7 +17,7 @@ function nameForStage(stageId: string): string {
         class="w-2 h-2 rounded-full inline-block"
         :style="{ backgroundColor: retirementPlan.stages.find((s) => s.id === c.stage)?.color }"
       />
-      {{ nameForStage(c.stage) }}: {{ Math.round(c.coveragePercent) }}% covered
+      {{ nameForStage(c.stage) }}: {{ c.coveragePercent > 0 ? `${Math.round(c.coveragePercent)}% covered` : 'no accounts drawn on' }}
     </span>
   </div>
 </template>

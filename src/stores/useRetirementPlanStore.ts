@@ -5,11 +5,16 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import {
   STAGE_PRESETS,
-  STAGE_COLOR_PALETTE,
   nextStageColor,
   type Stage,
   type StagePresetKey,
 } from '@/composeables/useStages';
+import {
+  addAccountShare,
+  removeAccountShare,
+  normalizeShares,
+  type ShareMap,
+} from '@/composeables/useWithdrawalShares';
 
 // The user-defined stages covering the withdrawal side of the timeline (see
 // useStages.ts for why Accumulation isn't one of them). A new, dedicated
@@ -24,7 +29,10 @@ export const useRetirementPlanStore = defineStore(
     const assumptions = usePortfolioAssumptionsStore();
     const portfolio = usePortfolioStore();
 
-    const stages = ref<Stage[]>(seededDefaultStages());
+    // Starts empty: a fresh plan has no stages until the user adds one (via
+    // the "+" in the Retirement Plan section, which offers the Go-Go/Slow-Go/
+    // No-Go presets), so everything stays in Accumulation until then.
+    const stages = ref<Stage[]>([]);
 
     // The retirementAge replacement — when the paycheck stops and the
     // withdrawal timeline begins. Null only when the user has deleted every
@@ -33,12 +41,6 @@ export const useRetirementPlanStore = defineStore(
 
     function sortStages() {
       stages.value.sort((a, b) => a.startAge - b.startAge);
-    }
-
-    function defaultShareMap(): Record<string, number> {
-      const map: Record<string, number> = {};
-      for (const a of portfolio.accounts) map[a.id] = 100;
-      return map;
     }
 
     // Where a newly added stage starts: right after the current last stage,
@@ -64,7 +66,8 @@ export const useRetirementPlanStore = defineStore(
         startAge: nextDefaultStartAge(),
         color: nextStageColor(stages.value),
         incomeReplacementRate: preset?.incomeReplacementRate ?? 100,
-        withdrawalShareByAccount: defaultShareMap(),
+        // Nothing is drawn on until the user toggles an account on.
+        withdrawalShareByAccount: {},
       };
       stages.value.push(stage);
       sortStages();
@@ -95,88 +98,53 @@ export const useRetirementPlanStore = defineStore(
       stages.value[index]!.startAge = Math.min(Math.max(newStartAge, min), max);
     }
 
-    function seededDefaultStages(): Stage[] {
-      // Mirrors the old 40/40/20 split default (usePortfolioAssumptionsStore's
-      // former retirementBoundaries formula), just materialized as real
-      // Stage records instead of a boundary tuple.
-      const retirementAgeDefault = 60;
-      const lifeExpectancy = assumptions?.lifeExpectancy ?? 90;
-      const yearsInRetirement = lifeExpectancy - retirementAgeDefault;
-      const baseYears = Math.floor((yearsInRetirement * 2) / 5);
-      const goGoEndAge = retirementAgeDefault + baseYears;
-      const slowGoEndAge = goGoEndAge + baseYears;
-
-      const gogo = STAGE_PRESETS.find((p) => p.key === 'gogo')!;
-      const slowgo = STAGE_PRESETS.find((p) => p.key === 'slowgo')!;
-      const nogo = STAGE_PRESETS.find((p) => p.key === 'nogo')!;
-
-      return [
-        {
-          id: crypto.randomUUID(),
-          name: gogo.name,
-          description: gogo.description,
-          startAge: retirementAgeDefault,
-          color: STAGE_COLOR_PALETTE[1]!,
-          incomeReplacementRate: gogo.incomeReplacementRate,
-          withdrawalShareByAccount: {},
-        },
-        {
-          id: crypto.randomUUID(),
-          name: slowgo.name,
-          description: slowgo.description,
-          startAge: goGoEndAge,
-          color: STAGE_COLOR_PALETTE[2]!,
-          incomeReplacementRate: slowgo.incomeReplacementRate,
-          withdrawalShareByAccount: {},
-        },
-        {
-          id: crypto.randomUUID(),
-          name: nogo.name,
-          description: nogo.description,
-          startAge: slowGoEndAge,
-          color: STAGE_COLOR_PALETTE[3]!,
-          incomeReplacementRate: nogo.incomeReplacementRate,
-          withdrawalShareByAccount: {},
-        },
-      ];
-    }
-
-    // Used for every fresh store's own default state (fresh install, no
-    // migration from the old schema) — see resetToDefaults, and
-    // PortfolioView.vue's "Reset Portfolio" action.
-    function resetToDefaults() {
-      stages.value = seededDefaultStages();
-    }
-
     // Empties the stage list without touching anything else — Context,
-    // Accounts, and portfolio assumptions are untouched. See
+    // Accounts, and portfolio assumptions are untouched. Also what "Reset
+    // Portfolio" uses, since an empty list is the fresh-install default. See
     // PortfolioView.vue's "Clear all stages" action, which mirrors
-    // usePortfolioStore's clearAllAccounts (empty, not reseeded).
+    // usePortfolioStore's clearAllAccounts.
     function clearStages() {
       stages.value = [];
     }
 
-    // Keeps every stage's withdrawalShareByAccount map in sync with which
-    // accounts actually exist: a newly added account gets seeded at 100% in
-    // every existing stage (so it doesn't silently contribute 0%), and a
-    // removed account's key is pruned from every stage (its withdrawal share
-    // data has nowhere else to live and shouldn't linger). Runs immediately
-    // so a fresh store's seeded default stages pick up whatever accounts
-    // already exist.
+    function stageById(stageId: string) {
+      return stages.value.find((s) => s.id === stageId);
+    }
+
+    // Turns an account on/off for a stage. Turning one on gives it an even
+    // slice and the others shrink proportionally; turning one off hands its
+    // slice back proportionally — see useWithdrawalShares.ts.
+    function setAccountEnabled(stageId: string, accountId: string, enabled: boolean) {
+      const stage = stageById(stageId);
+      if (!stage) return;
+      stage.withdrawalShareByAccount = enabled
+        ? addAccountShare(stage.withdrawalShareByAccount, accountId)
+        : removeAccountShare(stage.withdrawalShareByAccount, accountId);
+    }
+
+    /** Replaces a stage's shares wholesale (the share slider hands back the whole, already-valid split). */
+    function setShares(stageId: string, shares: ShareMap) {
+      const stage = stageById(stageId);
+      if (stage) stage.withdrawalShareByAccount = shares;
+    }
+
+    // Keeps every stage's shares valid — only real accounts, each at least
+    // MIN_SHARE, summing to exactly 100 (or empty) — no matter how they got
+    // that way: an account being deleted, or a plan saved back when every
+    // account sat at its own independent 100%. Every valid map passes through
+    // untouched, so the toggles and slider never fight this. It watches the
+    // stages too (not just the accounts) because saved stages hydrate after
+    // this store is created.
     watch(
-      () => portfolio.accounts.map((a) => a.id),
-      (currentIds) => {
-        const idSet = new Set(currentIds);
+      [() => portfolio.accounts.map((a) => a.id), () => stages.value.map((s) => s.withdrawalShareByAccount)],
+      () => {
+        const validIds = new Set(portfolio.accounts.map((a) => a.id));
         for (const stage of stages.value) {
-          for (const id of currentIds) {
-            if (!(id in stage.withdrawalShareByAccount)) stage.withdrawalShareByAccount[id] = 100;
-          }
-          for (const id of Object.keys(stage.withdrawalShareByAccount)) {
-            if (!idSet.has(id)) delete stage.withdrawalShareByAccount[id];
-          }
+          const fixed = normalizeShares(stage.withdrawalShareByAccount, validIds);
+          if (fixed !== stage.withdrawalShareByAccount) stage.withdrawalShareByAccount = fixed;
         }
       },
-      { immediate: true }
+      { immediate: true, deep: true }
     );
 
     return {
@@ -185,7 +153,8 @@ export const useRetirementPlanStore = defineStore(
       addStage,
       removeStage,
       moveBoundary,
-      resetToDefaults,
+      setAccountEnabled,
+      setShares,
       clearStages,
     };
   },

@@ -116,7 +116,7 @@ const accountRows = computed(() =>
               {{
                 Number.isFinite(row.account.withdrawalStartAge)
                   ? `Withdraws from age ${row.account.withdrawalStartAge}`
-                  : "Never withdraws — set a Withdrawal Share above 0% on some stage"
+                  : "Never withdraws — toggle it on in some stage"
               }}
             </span>
           </div>
