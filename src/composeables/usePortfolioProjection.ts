@@ -5,7 +5,9 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
-import { ACCUMULATION_ID } from '@/composeables/useStages';
+import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
+import { ACCUMULATION_ID, stageForAge } from '@/composeables/useStages';
+import { resolveIncomeSource, totalIncomeAtAge } from '@/composeables/useIncomeSources';
 
 export interface PortfolioProjectionRow {
   age: number;
@@ -25,6 +27,8 @@ export interface StageAggregate {
   finalBalance: number;
   totalFlow: number;
   totalGrowth: number;
+  /** Everything the income sources (Social Security, pensions, annuities) paid during this stage. */
+  guaranteedIncome: number;
 }
 
 /**
@@ -38,6 +42,7 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
   const portfolio = usePortfolioStore();
   const assumptions = usePortfolioAssumptionsStore();
   const retirementPlan = useRetirementPlanStore();
+  const incomeSources = useIncomeSourcesStore();
 
   const accounts = computed(() =>
     portfolio.accounts.map((a) => ({ id: a.id, name: a.name, store: useAccountStore(a.id) }))
@@ -64,6 +69,29 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
     return out;
   });
 
+  // What the income sources pay in each stage, under the same inflation
+  // perspective as the account rows (row i of an account's inflation-adjusted
+  // projection divides by (1 + inflation)^i, so this does too). Income only
+  // counts from the first stage's start — before that there's no target for
+  // it to offset (see useAccountProjection.ts).
+  const guaranteedIncomeByStage = computed<Record<string, number>>(() => {
+    const resolved = incomeSources.sources.map((s) => resolveIncomeSource(s, assumptions));
+    const totals: Record<string, number> = {};
+
+    for (let age = assumptions.ageToday; age < assumptions.lifeExpectancy; age++) {
+      const stage = stageForAge(retirementPlan.stages, age);
+      if (!stage) continue;
+
+      const factor =
+        perspective.value === 'inflation-adjusted'
+          ? Math.pow(1 + assumptions.annualInflation / 100, age - assumptions.ageToday)
+          : 1;
+      totals[stage.id] = (totals[stage.id] ?? 0) + totalIncomeAtAge(resolved, age) / factor;
+    }
+
+    return totals;
+  });
+
   const stageAggregates = computed<StageAggregate[]>(() => {
     const stageIds = [ACCUMULATION_ID, ...retirementPlan.stages.map((s) => s.id)];
 
@@ -83,7 +111,13 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
         totalGrowth += stageRows.reduce((sum, r) => sum + r.totalGrowth, 0);
       }
 
-      return { stage, finalBalance, totalFlow, totalGrowth };
+      return {
+        stage,
+        finalBalance,
+        totalFlow,
+        totalGrowth,
+        guaranteedIncome: guaranteedIncomeByStage.value[stage] ?? 0,
+      };
     });
   });
 

@@ -16,16 +16,22 @@ import PortfolioCoverageLegend from '@/components/portfolio/PortfolioCoverageLeg
 import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
+import AddAccountMenu from '@/components/portfolio/AddAccountMenu.vue';
+import IncomeSourceCard from '@/components/portfolio/IncomeSourceCard.vue';
+import IncomeSourceFormModal from '@/components/portfolio/IncomeSourceFormModal.vue';
 import PortfolioAssumptionsModal from '@/components/portfolio/PortfolioAssumptionsModal.vue';
 import StageFormModal from '@/components/portfolio/StageFormModal.vue';
 
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
+import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
+import type { IncomeSourceType } from '@/composeables/useIncomeSources';
 
 const portfolio = usePortfolioStore();
 const assumptions = usePortfolioAssumptionsStore();
 const retirementPlan = useRetirementPlanStore();
+const incomeSources = useIncomeSourcesStore();
 
 // Every section header (Context, Accounts, Portfolio, Retirement Plan,
 // Summary) always renders — this is the walk-through a first-time user
@@ -47,12 +53,14 @@ const showAssumptionsModal = ref(false);
 const showClearAllConfirm = ref(false);
 function clearAllAccounts() {
   portfolio.clearAllAccounts();
+  incomeSources.clearAll();
   showClearAllConfirm.value = false;
 }
 
 const showResetConfirm = ref(false);
 function resetPortfolio() {
   portfolio.clearAllAccounts();
+  incomeSources.clearAll();
   assumptions.resetToDefaults();
   retirementPlan.resetToDefaults();
   showResetConfirm.value = false;
@@ -95,6 +103,34 @@ function closeAccountModal(createdAccountId?: string) {
   showAccountModal.value = false;
   editingAccountId.value = null;
   if (createdAccountId) expandedIds.add(createdAccountId);
+}
+
+// Income sources (Social Security, pensions, annuities) have their own form:
+// `newIncomeSourceType` starts a new one of that type, `editingIncomeSourceId`
+// reopens an existing one.
+const showIncomeSourceModal = ref(false);
+const editingIncomeSourceId = ref<string | null>(null);
+const newIncomeSourceType = ref<IncomeSourceType>('social-security');
+
+function onAddSelect(kind: 'account' | IncomeSourceType) {
+  if (kind === 'account') {
+    addAccount();
+    return;
+  }
+  editingIncomeSourceId.value = null;
+  newIncomeSourceType.value = kind;
+  showIncomeSourceModal.value = true;
+}
+
+function editIncomeSource(id: string) {
+  editingIncomeSourceId.value = id;
+  showIncomeSourceModal.value = true;
+}
+
+function closeIncomeSourceModal(createdSourceId?: string) {
+  showIncomeSourceModal.value = false;
+  editingIncomeSourceId.value = null;
+  if (createdSourceId) expandedIds.add(createdSourceId);
 }
 </script>
 
@@ -141,15 +177,11 @@ function closeAccountModal(createdAccountId?: string) {
           Accounts
           <template #subtitle>
             The accounts that'll fund your retirement — Traditional, Roth, and Brokerage today,
-            with more account types (like Social Security and pensions) on the way.
+            plus guaranteed income from Social Security, pensions, and annuities.
           </template>
         </BodySectionHeader>
         <div v-if="accountsDone" class="flex items-center gap-2">
-          <SecondaryButton rounded aria-label="Add account" @click="addAccount">
-            <template #icon>
-              <PlusIcon style="width: 14px; height: 14px" />
-            </template>
-          </SecondaryButton>
+          <AddAccountMenu @select="onAddSelect" />
           <SecondaryButton rounded aria-label="Clear all accounts" @click="showClearAllConfirm = true">
             <template #icon>
               <TrashIcon style="width: 14px; height: 14px" />
@@ -168,6 +200,18 @@ function closeAccountModal(createdAccountId?: string) {
           @update:collapsed="setExpanded(account.id, !$event)"
           @edit="editAccount"
         />
+
+        <template v-if="incomeSources.sources.length">
+          <h4 class="font-semibold text-surface-500 dark:text-surface-400 pt-4">Guaranteed Income</h4>
+          <IncomeSourceCard
+            v-for="source in incomeSources.sources"
+            :key="source.id"
+            :sourceId="source.id"
+            :collapsed="!expandedIds.has(source.id)"
+            @update:collapsed="setExpanded(source.id, !$event)"
+            @edit="editIncomeSource"
+          />
+        </template>
       </div>
       <SectionPlaceholder
         v-else
@@ -269,10 +313,17 @@ function closeAccountModal(createdAccountId?: string) {
 
     <StageFormModal v-if="showStageModal" @close="showStageModal = false" />
 
+    <IncomeSourceFormModal
+      v-if="showIncomeSourceModal"
+      :sourceId="editingIncomeSourceId ?? undefined"
+      :type="newIncomeSourceType"
+      @close="closeIncomeSourceModal"
+    />
+
     <ConfirmModal
       v-if="showClearAllConfirm"
       title="Clear All Accounts?"
-      message="This removes every account in your portfolio. This can't be undone."
+      message="This removes every account and income source in your portfolio. This can't be undone."
       confirm-label="Clear All"
       @confirm="clearAllAccounts"
       @cancel="showClearAllConfirm = false"

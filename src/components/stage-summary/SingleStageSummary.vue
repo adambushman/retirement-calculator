@@ -11,7 +11,11 @@ defineProps<{
   totalFlow: number,
   avgMonthlyFlow: number,
   totalGrowth: number,
-  years: Array<number>
+  years: Array<number>,
+  /** Accumulation is the only stage money flows *into* the accounts; every other stage is withdrawals, even if guaranteed income covers it and that comes to $0. */
+  isAccumulation?: boolean,
+  /** Average monthly guaranteed income (Social Security, pensions, annuities) during this stage; hidden when 0. */
+  avgMonthlyIncome?: number
 }>();
 </script>
 
@@ -45,7 +49,7 @@ defineProps<{
 
   <div class="text-center">
     <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(totalFlow) }}</h2>
-    <p class="text-xs lg:text-sm text-gray-500">{{ totalFlow < 0 ? 'Withdrawals' : 'Contributions' }}</p>
+    <p class="text-xs lg:text-sm text-gray-500">{{ isAccumulation ? 'Contributions' : 'Withdrawals' }}</p>
   </div>
 
   <div class="text-center">
@@ -56,6 +60,11 @@ defineProps<{
   <div class="text-center">
     <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(totalGrowth) }}</h2>
     <p class="text-xs lg:text-sm text-gray-500">Compounded Growth</p>
+  </div>
+
+  <div v-if="avgMonthlyIncome" class="text-center">
+    <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(avgMonthlyIncome) }}</h2>
+    <p class="text-xs lg:text-sm text-gray-500">Guaranteed Income (Monthly Avg.)</p>
   </div>
 </div>
 </template>

@@ -59,11 +59,12 @@ function defineAccountStore(id: string, persist: boolean) {
   // Roth, which use their fixed 59.5 instead.
   const naiveWithdrawalAge = ref<number>(59.5);
 
-  // Restates the naive projection's own KPIs (Balance at Target Age, First
-  // Monthly Retirement Withdrawal) in today's dollars — independent of the
-  // complex engine's own inflationAdjChoice above, which governs the
-  // chart/stage breakdown instead. See naiveInflationFactor.
-  const naiveInflationAdjChoice = ref<boolean>(false);
+  // Restates the naive projection's own KPI (Balance at Target Age) in
+  // today's dollars — independent of the complex engine's own
+  // inflationAdjChoice above, which governs the chart/stage breakdown
+  // instead. On by default so every figure opens in today's purchasing power;
+  // see naiveInflationFactor.
+  const naiveInflationAdjChoice = ref<boolean>(true);
 
   // Which of the household's income streams (see usePortfolioAssumptionsStore)
   // this account's percent-of-income contribution is measured against and

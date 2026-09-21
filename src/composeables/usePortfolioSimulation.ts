@@ -6,6 +6,8 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
+import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
+import { resolveIncomeSource } from '@/composeables/useIncomeSources';
 
 const EMPTY_PROJECTION: FullProjection = { raw: [], 'inflation-adjusted': [] };
 
@@ -33,6 +35,7 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
   const portfolio = usePortfolioStore();
   const assumptions = usePortfolioAssumptionsStore();
   const retirementPlan = useRetirementPlanStore();
+  const incomeSources = useIncomeSourcesStore();
 
   const projections = computed<Map<string, FullProjection>>(() => {
     const accounts = portfolio.accounts.map((meta) => {
@@ -57,6 +60,7 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
       annualRaises: assumptions.annualRaises,
       stages: retirementPlan.stages,
       annualInflation: assumptions.annualInflation,
+      incomeSources: incomeSources.sources.map((source) => resolveIncomeSource(source, assumptions)),
     });
   });
 

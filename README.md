@@ -164,10 +164,10 @@ This builds `dist/` and publishes it to the `gh-pages` branch of `origin`.
 
 ## Scope & limitations
 
-- Models **retirement accounts only** (401k, IRA, etc.). No Social Security, pensions, or other retirement-year income.
+- Models **retirement accounts** (401k, IRA, brokerage) plus **guaranteed income** — Social Security, pensions, and annuities. Each pays for life from its own start age with an annual increase (COLA), and what it pays each year reduces what your accounts must cover. Other retirement-year income (part-time work, rental income) isn't modeled.
 - **No tax modeling** — contributions are treated as pre-tax and income as gross.
 - Growth is applied **annually**, after that year's contributions/withdrawals.
-- Years are treated as whole; withdrawal amounts are **static within a stage**.
+- Years are treated as whole; each stage's withdrawal target is **indexed by inflation** every year of retirement.
 - A single inflation figure is applied uniformly across every stage.
 
 See the in-app **Assumptions** tab and **FAQ** for the full details.

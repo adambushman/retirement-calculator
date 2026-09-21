@@ -28,7 +28,12 @@ const perMonth = (totalFlow: number, years: number) =>
   years > 0 ? totalFlow / years / 12 : 0;
 
 const aggregateFor = (stage: string) =>
-  props.stageAggregates.find((s) => s.stage === stage) ?? { finalBalance: 0, totalFlow: 0, totalGrowth: 0 };
+  props.stageAggregates.find((s) => s.stage === stage) ?? {
+    finalBalance: 0,
+    totalFlow: 0,
+    totalGrowth: 0,
+    guaranteedIncome: 0,
+  };
 
 // Accumulation, followed by every user-defined stage in order — each stage's
 // own age range falls out of its startAge and derived endAge, no manual
@@ -72,6 +77,8 @@ const stages = computed(() => {
       :totalFlow="s.totalFlow"
       :avgMonthlyFlow="perMonth(s.totalFlow, s.years[1]! - s.years[0]! + 1)"
       :totalGrowth="s.totalGrowth"
+      :avgMonthlyIncome="perMonth(s.guaranteedIncome, s.years[1]! - s.years[0]! + 1)"
+      :isAccumulation="s.stageId === ACCUMULATION_ID"
       :years="s.years"
     />
   </div>

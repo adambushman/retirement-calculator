@@ -9,7 +9,7 @@ import { usePortfolioProjection } from '@/composeables/usePortfolioProjection';
 
 // Independent of any single account's own "Adjust for Inflation" choice —
 // this toggle governs the combined chart and stage breakdown together.
-const inflationAdjusted = ref(false);
+const inflationAdjusted = ref(true);
 const perspective = computed(() => (inflationAdjusted.value ? 'inflation-adjusted' : 'raw'));
 
 const { rows, stageAggregates } = usePortfolioProjection(perspective);

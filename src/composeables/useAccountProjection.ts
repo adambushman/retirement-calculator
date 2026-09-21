@@ -1,6 +1,7 @@
 import type { AnnualProjection, FullProjection } from '@/composeables/useProjections';
 import { applyInflationAdjustment } from '@/composeables/useProjections';
 import { ACCUMULATION_ID, stageForAge, type Stage } from '@/composeables/useStages';
+import { totalIncomeAtAge, type ResolvedIncomeSource } from '@/composeables/useIncomeSources';
 
 // The shared, cross-account timeline engine: rather than each account
 // running its own independent sequence of stages, every account is walked
@@ -22,6 +23,13 @@ import { ACCUMULATION_ID, stageForAge, type Stage } from '@/composeables/useStag
 // before a stage exists to draw against — see the `unlocked` check below,
 // which gates on both this age AND a real current stage — so there's no
 // unstaged fallback to handle in this engine.
+//
+// Income sources (Social Security, pensions, annuities — see
+// useIncomeSources.ts) aren't accounts and never withdraw from anything:
+// each simply pays out from its own start age, in every stage, and what it
+// pays that year is subtracted from the stage's target before the
+// withdrawing accounts split the remainder. Income before the first stage
+// begins has no target to offset, so it only counts from that stage's start.
 export type ContributionMode = 'percent' | 'dollar';
 
 export interface AccountProjectionInput {
@@ -49,6 +57,34 @@ export interface PortfolioProjectionAssumptions {
   annualRaises: number;
   stages: Stage[];
   annualInflation: number;
+  incomeSources: ResolvedIncomeSource[];
+}
+
+/**
+ * The nominal dollars a stage aims to replace in the year starting at `age`:
+ * the stage's income-replacement rate applied to the household's income in
+ * its last working year, then indexed by inflation for every year since the
+ * first stage began — retirement spending is meant to hold its purchasing
+ * power, so a target that stayed flat in nominal dollars would quietly
+ * shrink in real terms (and fall behind any income source with a COLA).
+ */
+export function retirementTargetAnnual(
+  assumptions: PortfolioProjectionAssumptions,
+  stage: Stage,
+  age: number
+): number {
+  const yearsUntilFirstStage = assumptions.firstStageStartAge - assumptions.ageToday;
+  // Income in the last accumulation year: compound the annual raise once per
+  // completed working year (year 1 is worked at today's salary, no raise
+  // yet), so the exponent is one less than the number of years until the
+  // first stage begins.
+  const annualIncomeAtFirstStage =
+    assumptions.annualIncome * Math.pow(1 + assumptions.annualRaises / 100, Math.max(0, yearsUntilFirstStage - 1));
+
+  const yearsIntoRetirement = Math.max(0, age - assumptions.firstStageStartAge);
+  const inflationIndex = Math.pow(1 + assumptions.annualInflation / 100, yearsIntoRetirement);
+
+  return annualIncomeAtFirstStage * (stage.incomeReplacementRate / 100) * inflationIndex;
 }
 
 interface AccountState {
@@ -76,15 +112,6 @@ export function computePortfolioSimulation(
   accounts: (AccountProjectionInput & { id: string })[],
   assumptions: PortfolioProjectionAssumptions
 ): Map<string, FullProjection> {
-  const yearsUntilFirstStage = assumptions.firstStageStartAge - assumptions.ageToday;
-  // Income in the last accumulation year: compound the annual raise once per
-  // completed working year (year 1 is worked at today's salary, no raise
-  // yet, matching the compounding below), so the exponent is one less than
-  // the number of years until the first stage begins.
-  const annualIncomeAtFirstStage =
-    assumptions.annualIncome * Math.pow(1 + assumptions.annualRaises / 100, Math.max(0, yearsUntilFirstStage - 1));
-  const monthlyIncomeAtFirstStage = annualIncomeAtFirstStage / 12;
-
   const totalYears = assumptions.lifeExpectancy - assumptions.ageToday;
 
   const state: AccountState[] = accounts.map((input) => ({
@@ -121,9 +148,12 @@ export function computePortfolioSimulation(
     let targetAnnualFull = 0;
     let originalPoolShareSum = 0;
     let activeShareSum = 0;
-    if (withdrawing.length > 0) {
-      const rate = currentStage?.incomeReplacementRate ?? 0;
-      targetAnnualFull = monthlyIncomeAtFirstStage * (rate / 100) * 12;
+    if (withdrawing.length > 0 && currentStage) {
+      // What the accounts must cover is the stage's target less whatever the
+      // income sources already pay this year (never below zero — a surplus
+      // just goes unspent).
+      const guaranteedIncome = totalIncomeAtAge(assumptions.incomeSources, age);
+      targetAnnualFull = Math.max(0, retirementTargetAnnual(assumptions, currentStage, age) - guaranteedIncome);
       for (const s of withdrawing) {
         const share = currentStage?.withdrawalShareByAccount[s.id] ?? 0;
         originalPoolShareSum += share;
