@@ -136,37 +136,40 @@ const textFieldClass =
     </div>
 
     <div v-if="!collapsed" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="flex flex-wrap content-start gap-4">
-        <div>
-          <label class="block text-sm mb-2 text-gray-400" :for="`stage-start-age-${stage.id}`">
-            Start Age
-          </label>
-          <InputNumber
-            :modelValue="stage.startAge"
-            @update:modelValue="(v: number | null) => setStartAge(v)"
-            @input="$event.value !== null && setStartAge($event.value)"
-            :inputId="`stage-start-age-${stage.id}`"
-            size="small"
-          />
-        </div>
+      <div>
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3 text-sm">Stage Timing & Replacement</h4>
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="block text-sm mb-2 text-gray-400" :for="`stage-start-age-${stage.id}`">
+              Start Age
+            </label>
+            <InputNumber
+              :modelValue="stage.startAge"
+              @update:modelValue="(v: number | null) => setStartAge(v)"
+              @input="$event.value !== null && setStartAge($event.value)"
+              :inputId="`stage-start-age-${stage.id}`"
+              size="small"
+            />
+          </div>
 
-        <div>
-          <span class="block text-sm mb-2 text-gray-400">End Age</span>
-          <p class="text-sm py-2">{{ endAge }}</p>
-        </div>
+          <div>
+            <span class="block text-sm mb-2 text-gray-400">End Age</span>
+            <p class="text-sm py-2">{{ endAge }}</p>
+          </div>
 
-        <div>
-          <label class="block text-sm mb-2 text-gray-400" :for="`stage-rate-${stage.id}`">
-            Income Replacement Rate
-          </label>
-          <InputNumber
-            v-model.number="stage.incomeReplacementRate"
-            @input="$event.value !== null && (stage.incomeReplacementRate = $event.value)"
-            :inputId="`stage-rate-${stage.id}`"
-            size="small"
-            suffix="%"
-            :min="0"
-          />
+          <div>
+            <label class="block text-sm mb-2 text-gray-400" :for="`stage-rate-${stage.id}`">
+              Income Replacement Rate
+            </label>
+            <InputNumber
+              v-model.number="stage.incomeReplacementRate"
+              @input="$event.value !== null && (stage.incomeReplacementRate = $event.value)"
+              :inputId="`stage-rate-${stage.id}`"
+              size="small"
+              suffix="%"
+              :min="0"
+            />
+          </div>
         </div>
       </div>
 
