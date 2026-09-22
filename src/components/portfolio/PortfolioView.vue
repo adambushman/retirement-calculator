@@ -62,7 +62,7 @@ function resetPortfolio() {
   portfolio.clearAllAccounts();
   incomeSources.clearAll();
   assumptions.resetToDefaults();
-  retirementPlan.clearStages();
+  retirementPlan.resetToDefaults();
   showResetConfirm.value = false;
 }
 

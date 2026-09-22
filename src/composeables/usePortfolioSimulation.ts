@@ -44,7 +44,6 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
         id: meta.id,
         currentBalance: store.currentBalance,
         growthRatePreRetirement: store.growthRatePreRetirement,
-        growthRateIntraRetirement: store.growthRateIntraRetirement,
         contributionMode: store.contributionMode,
         firstMonthlyContribution: store.firstMonthlyContribution,
         contributionRaises: store.contributionRaises,
@@ -61,6 +60,7 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
       stages: retirementPlan.stages,
       annualInflation: assumptions.annualInflation,
       incomeSources: incomeSources.sources.map((source) => resolveIncomeSource(source, assumptions)),
+      growthRateIntraRetirement: retirementPlan.growthRateIntraRetirement,
     });
   });
 

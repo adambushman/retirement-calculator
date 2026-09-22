@@ -35,7 +35,6 @@ export type ContributionMode = 'percent' | 'dollar';
 export interface AccountProjectionInput {
   currentBalance: number;
   growthRatePreRetirement: number;
-  growthRateIntraRetirement: number;
   contributionMode: ContributionMode;
   firstMonthlyContribution: number;
   // The raise rate this account's percent-of-income contribution escalates
@@ -58,6 +57,9 @@ export interface PortfolioProjectionAssumptions {
   stages: Stage[];
   annualInflation: number;
   incomeSources: ResolvedIncomeSource[];
+  // One rate for every account once it's being withdrawn from — see
+  // useRetirementPlanStore's own comment on why this isn't per-account.
+  growthRateIntraRetirement: number;
 }
 
 /**
@@ -176,7 +178,7 @@ export function computePortfolioSimulation(
         annualFlow = age < s.contributingCutoffAge ? s.contributionMonthly * 12 : 0;
         growthRate = s.input.growthRatePreRetirement;
       } else {
-        growthRate = s.input.growthRateIntraRetirement;
+        growthRate = assumptions.growthRateIntraRetirement;
         // Redistribute this stage's target across whichever already-unlocked
         // accounts are still solvent, weighted by their own share of *this
         // stage* — a depleted account (or one with no remaining active

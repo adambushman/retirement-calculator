@@ -51,7 +51,6 @@ function defineAccountStore(id: string, persist: boolean) {
   const savingsRate = ref<number>(15);
   const contributionAmount = ref<number>(500);
   const growthRatePreRetirement = ref<number>(8.5);
-  const growthRateIntraRetirement = ref<number>(5.5);
   const inflationAdjChoice = ref<boolean>(false);
   // Only meaningful for Brokerage, which has no penalty-free withdrawal age
   // of its own (see ACCOUNT_TYPE_RULES) — the naive projection below falls
@@ -299,7 +298,6 @@ function defineAccountStore(id: string, persist: boolean) {
     savingsRate,
     contributionAmount,
     growthRatePreRetirement,
-    growthRateIntraRetirement,
     inflationAdjChoice,
     naiveWithdrawalAge,
     naiveWithdrawalAgeBounds,
@@ -378,7 +376,6 @@ export function copyAccountFields(source: AccountStoreInstance, target: AccountS
   target.savingsRate = source.savingsRate;
   target.contributionAmount = source.contributionAmount;
   target.growthRatePreRetirement = source.growthRatePreRetirement;
-  target.growthRateIntraRetirement = source.growthRateIntraRetirement;
   target.inflationAdjChoice = source.inflationAdjChoice;
   target.naiveWithdrawalAge = source.naiveWithdrawalAge;
   target.naiveInflationAdjChoice = source.naiveInflationAdjChoice;

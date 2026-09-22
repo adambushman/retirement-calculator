@@ -34,6 +34,16 @@ export const useRetirementPlanStore = defineStore(
     // No-Go presets), so everything stays in Accumulation until then.
     const stages = ref<Stage[]>([]);
 
+    // One rate for every account once it's being withdrawn from, rather than
+    // a per-account setting: each account's own Growth Rate (Before
+    // Withdrawals) already gives it a distinct risk profile while it
+    // matters most (the long accumulation years). Once withdrawals start,
+    // that's a shrinking balance over a shorter horizon, and modeling it as
+    // one shared "retirement portfolio" assumption is simpler without
+    // meaningfully losing anything. See useAccountProjection.ts, which
+    // applies this to every account during its withdrawing years.
+    const growthRateIntraRetirement = ref<number>(5.5);
+
     // The retirementAge replacement — when the paycheck stops and the
     // withdrawal timeline begins. Null only when the user has deleted every
     // stage.
@@ -107,6 +117,15 @@ export const useRetirementPlanStore = defineStore(
       stages.value = [];
     }
 
+    // Used by "Reset Portfolio" (see PortfolioView.vue) — clearStages alone
+    // covers the fresh-install default for stages, but a full reset should
+    // also put this back to its own default rather than leaving behind
+    // whatever the user last set it to.
+    function resetToDefaults() {
+      stages.value = [];
+      growthRateIntraRetirement.value = 5.5;
+    }
+
     function stageById(stageId: string) {
       return stages.value.find((s) => s.id === stageId);
     }
@@ -150,12 +169,14 @@ export const useRetirementPlanStore = defineStore(
     return {
       stages,
       firstStageStartAge,
+      growthRateIntraRetirement,
       addStage,
       removeStage,
       moveBoundary,
       setAccountEnabled,
       setShares,
       clearStages,
+      resetToDefaults,
     };
   },
   { persist: true }
