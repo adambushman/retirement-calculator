@@ -183,7 +183,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       <span>{{ compactDollars(store.currentBalance) }} today</span>
       <span>&rarr;</span>
       <span :class="store.naiveBalanceAtTargetAge < 0 ? 'text-red-500' : 'text-emerald-500'">
-        {{ compactDollars(store.naiveBalanceAtTargetAge) }} by age {{ compactAge(store.naiveTargetAge) }}
+        {{ compactDollars(store.naiveBalanceAtTargetAge) }} by age {{ compactAge(store.naiveTargetAge) }}{{
+          store.naiveInflationAdjChoice ? " (in today's dollars)" : ''
+        }}
       </span>
     </div>
 

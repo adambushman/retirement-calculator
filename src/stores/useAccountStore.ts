@@ -65,6 +65,14 @@ function defineAccountStore(id: string, persist: boolean) {
   // see naiveInflationFactor.
   const naiveInflationAdjChoice = ref<boolean>(true);
 
+  // Whether the one-time upgrade to naiveInflationAdjChoice's new default
+  // (see above; it used to default to false) has already run for this
+  // account — see the persist.afterHydrate hook below. Starts false so an
+  // account whose stored data predates the flip (missing this field
+  // entirely) is caught exactly once; a user's own later choice to turn it
+  // off is never touched again afterward.
+  const naiveInflationDefaultMigrated = ref<boolean>(false);
+
   // Which of the household's income streams (see usePortfolioAssumptionsStore)
   // this account's percent-of-income contribution is measured against and
   // escalates with — null means "Total Annual Income" (the default, and the
@@ -302,6 +310,7 @@ function defineAccountStore(id: string, persist: boolean) {
     naiveWithdrawalAge,
     naiveWithdrawalAgeBounds,
     naiveInflationAdjChoice,
+    naiveInflationDefaultMigrated,
     incomeStreamId,
 
     // Computed values
@@ -332,7 +341,36 @@ function defineAccountStore(id: string, persist: boolean) {
     balanceAtWithdrawalStart,
     growthToWithdrawalStart,
   };
-  }, persist ? { persist: true } : {});
+  }, persist
+    ? {
+        persist: {
+          // Runs once right after this account's persisted data (if any) is
+          // loaded — not a plain watcher, because a watcher can't tell "this
+          // value just arrived from old storage" apart from "the user just
+          // toggled it in the UI." Old accounts saved before the default
+          // flip have naiveInflationAdjChoice: false and no
+          // naiveInflationDefaultMigrated key at all, so it stays at its
+          // fresh-setup value of false here — exactly the signal to upgrade.
+          // A brand-new account has nothing to hydrate, so this is a no-op
+          // for it (naiveInflationAdjChoice is already true).
+          afterHydrate(context) {
+            const store = context.store as unknown as {
+              naiveInflationAdjChoice: boolean;
+              naiveInflationDefaultMigrated: boolean;
+              $persist: () => void;
+            };
+            if (!store.naiveInflationDefaultMigrated) {
+              store.naiveInflationAdjChoice = true;
+              store.naiveInflationDefaultMigrated = true;
+              // $subscribe (which normally saves every change) is only
+              // attached after this hook returns, so this particular write
+              // needs an explicit save or it could be lost on the next load.
+              store.$persist();
+            }
+          },
+        },
+      }
+    : {});
 }
 
 function getAccountStore(id: string, persist: boolean) {

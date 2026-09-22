@@ -93,29 +93,61 @@ const accountRows = computed(() =>
       />
     </div>
 
-    <div class="max-w-sm">
-      <label class="block text-sm mb-2 text-gray-400" for="intra-retire-growth-input">
-        Growth Rate (During Withdrawals)
-      </label>
-      <p class="text-xs text-gray-400 mb-2">
-        Applied to every account once it starts being withdrawn from, regardless of stage — a
-        single, shared assumption for the retirement portfolio as a whole.
-      </p>
-      <div class="relative mt-6 pt-6">
-        <span
-          class="absolute top-0 -translate-x-1/2 leading-none text-sm font-semibold text-primary whitespace-nowrap"
-          :style="{ left: `${growthRatePercent}%` }"
-        >
-          {{ percent(retirementPlan.growthRateIntraRetirement) }}%
-        </span>
-        <Slider
-          v-model.number="retirementPlan.growthRateIntraRetirement"
-          class="w-full mt-0"
-          inputId="intra-retire-growth-input"
-          :min="GROWTH_RATE_MIN"
-          :max="GROWTH_RATE_MAX"
-          :step="0.25"
-        />
+    <div class="grid gap-10 sm:grid-cols-2">
+      <div>
+        <label class="block text-sm mb-2 text-gray-400" for="intra-retire-growth-input">
+          Growth Rate (During Withdrawals)
+        </label>
+        <p class="text-xs text-gray-400 mb-2">
+          Applied to every account once it starts being withdrawn from, regardless of stage — a
+          single, shared assumption for the retirement portfolio as a whole.
+        </p>
+        <div class="relative mt-6 pt-6 max-w-sm">
+          <span
+            class="absolute top-0 -translate-x-1/2 leading-none text-sm font-semibold text-primary whitespace-nowrap"
+            :style="{ left: `${growthRatePercent}%` }"
+          >
+            {{ percent(retirementPlan.growthRateIntraRetirement) }}%
+          </span>
+          <Slider
+            v-model.number="retirementPlan.growthRateIntraRetirement"
+            class="w-full mt-0"
+            inputId="intra-retire-growth-input"
+            :min="GROWTH_RATE_MIN"
+            :max="GROWTH_RATE_MAX"
+            :step="0.25"
+          />
+        </div>
+      </div>
+
+      <div v-if="accountRows.length" class="min-w-0">
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Withdrawal Start Age</h4>
+        <div class="overflow-x-auto">
+          <table class="text-sm border-collapse">
+            <thead>
+              <tr>
+                <th v-for="row in accountRows" :key="row.id" class="pb-2 px-3 first:pl-0">
+                  <div class="flex flex-col items-center gap-1">
+                    <component :is="row.typeIcon" class="text-gray-400" style="width: 16px; height: 16px" />
+                    <span class="font-medium truncate max-w-20" :title="row.name">{{ row.name }}</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-surface-100 dark:border-surface-800">
+                <td v-for="row in accountRows" :key="row.id" class="pt-1.5 px-3 text-center first:pl-0">
+                  <span v-if="Number.isFinite(row.withdrawalStartAge)" class="font-medium">
+                    {{ row.withdrawalStartAge }}
+                  </span>
+                  <span v-else class="text-gray-400" title="Never withdraws — toggle it on in some stage">
+                    &mdash;
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -131,26 +163,5 @@ const accountRows = computed(() =>
       No stages yet — everything stays in Accumulation all the way to life expectancy. Use the
       "+" button above to add your first stage.
     </p>
-
-    <div v-if="accountRows.length">
-      <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Per-Account Withdrawal Start</h4>
-      <div class="flex flex-wrap gap-x-6 gap-y-1.5">
-        <div
-          v-for="row in accountRows"
-          :key="row.id"
-          class="flex items-center gap-1.5 text-sm"
-        >
-          <component :is="row.typeIcon" class="text-gray-400 shrink-0" style="width: 14px; height: 14px" />
-          <span class="font-medium">{{ row.name }}</span>
-          <span class="text-gray-400 text-xs">
-            {{
-              Number.isFinite(row.withdrawalStartAge)
-                ? `withdraws from age ${row.withdrawalStartAge}`
-                : 'never withdraws — toggle it on in some stage'
-            }}
-          </span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>

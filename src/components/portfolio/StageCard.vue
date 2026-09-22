@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import TrashIcon from '@primevue/icons/trash';
 import ChevronDownIcon from '@primevue/icons/chevrondown';
 import ChevronUpIcon from '@primevue/icons/chevronup';
@@ -15,6 +15,12 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_ORDER } from '@/composeables/useAccountTypes';
 import { stageEndAge, type Stage } from '@/composeables/useStages';
+import { balanceAtAge } from '@/composeables/useProjections';
+
+// Treat a balance this close to zero as fully depleted — floating-point
+// noise from compounding/withdrawing across many years can leave a
+// technically-nonzero but meaningless fraction of a cent.
+const DEPLETED_THRESHOLD = 0.01;
 
 const props = defineProps<{
   stage: Stage;
@@ -57,12 +63,30 @@ function remove() {
 // just be "icon + account name" instead of repeating the type name. The
 // slider's segments follow this same order, so they read left to right the
 // way the toggles read top to bottom.
+//
+// Each row also carries whether that account is already run dry by the time
+// THIS stage begins — purely a function of Accumulation plus whatever any
+// EARLIER stage draws from it, never this stage's own settings (which only
+// affect ages at or after this stage's start) — so it's a stable, one-way
+// dependency and safe to read directly off the account's own projection.
 const shareAccounts = computed(() =>
   ACCOUNT_TYPE_ORDER.flatMap((type) =>
     portfolio.accounts
       .map((meta) => ({ id: meta.id, name: meta.name, color: meta.color, store: useAccountStore(meta.id) }))
       .filter((a) => a.store.accountType === type)
-      .map((a) => ({ ...a, icon: ACCOUNT_TYPE_ICONS[type] }))
+      .map((a) => {
+        const balanceAtStageStart = balanceAtAge(
+          a.store.futureProjection[a.store.inflationPerspective],
+          a.store.ageToday,
+          props.stage.startAge,
+          a.store.currentBalance
+        );
+        return {
+          ...a,
+          icon: ACCOUNT_TYPE_ICONS[type],
+          depleted: balanceAtStageStart <= DEPLETED_THRESHOLD,
+        };
+      })
   )
 );
 
@@ -71,6 +95,23 @@ const shareAccounts = computed(() =>
 const shares = computed(() => props.stage.withdrawalShareByAccount);
 const isOn = (accountId: string) => accountId in shares.value;
 const enabledAccounts = computed(() => shareAccounts.value.filter((a) => isOn(a.id)));
+
+// An account already toggled on for this stage can still end up depleted by
+// the time this stage starts, if an earlier stage's own share was raised
+// afterward — self-corrects the same way the store's own share
+// normalization does (see useRetirementPlanStore's watcher): idempotent, so
+// it settles in one pass instead of looping.
+watch(
+  shareAccounts,
+  (accounts) => {
+    for (const account of accounts) {
+      if (account.depleted && isOn(account.id)) {
+        retirementPlan.setAccountEnabled(props.stage.id, account.id, false);
+      }
+    }
+  },
+  { immediate: true }
+);
 
 const sliderSegments = computed(() =>
   enabledAccounts.value.map((a) => ({ id: a.id, label: a.name, color: a.color, value: shares.value[a.id]! }))
@@ -189,12 +230,15 @@ const textFieldClass =
             v-for="account in shareAccounts"
             :key="account.id"
             class="share-toggle flex items-center gap-3"
+            :class="account.depleted && 'opacity-60'"
             :style="{ '--account-color': account.color }"
+            :title="account.depleted ? 'No funds left in this account by the time this stage begins' : undefined"
           >
             <ToggleSwitch
               :modelValue="isOn(account.id)"
               @update:modelValue="(on: boolean) => retirementPlan.setAccountEnabled(stage.id, account.id, on)"
               :inputId="`stage-share-${stage.id}-${account.id}`"
+              :disabled="account.depleted"
             />
             <label
               class="flex items-center gap-1 text-sm min-w-0"
@@ -207,6 +251,7 @@ const textFieldClass =
             <span v-if="isOn(account.id)" class="ml-auto text-sm font-medium tabular-nums">
               {{ shares[account.id] }}%
             </span>
+            <span v-else-if="account.depleted" class="ml-auto text-xs text-gray-400">depleted</span>
           </div>
         </div>
 
