@@ -29,6 +29,8 @@ export interface StageAggregate {
   totalGrowth: number;
   /** Everything the income sources (Social Security, pensions, annuities) paid during this stage. */
   guaranteedIncome: number;
+  /** Early-withdrawal penalties paid during this stage, as a positive number. */
+  totalPenalties: number;
 }
 
 /**
@@ -99,6 +101,7 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
       let finalBalance = 0;
       let totalFlow = 0;
       let totalGrowth = 0;
+      let totalPenalties = 0;
 
       for (const { store } of accounts.value) {
         const stageRows = seriesFor(store).filter((r) => r.stage === stage);
@@ -106,9 +109,24 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
 
         // Final balance for this stage = each account's own last row in it,
         // summed — an account that never enters a stage contributes nothing.
-        finalBalance += stageRows[stageRows.length - 1]!.endBalance;
-        totalFlow += stageRows.reduce((sum, r) => sum + r.annualFlow, 0);
-        totalGrowth += stageRows.reduce((sum, r) => sum + r.totalGrowth, 0);
+        const startingBalance = stageRows[0]!.startBalance;
+        const endingBalance = stageRows[stageRows.length - 1]!.endBalance;
+        const flow = stageRows.reduce((sum, r) => sum + r.annualFlow, 0);
+        const penalties = stageRows.reduce((sum, r) => sum + r.penalty, 0);
+
+        finalBalance += endingBalance;
+        totalFlow += flow;
+        totalPenalties += penalties;
+        // Derived (ending − starting − flow), not summed row by row: under
+        // the inflation-adjusted perspective, each row is deflated by ITS
+        // OWN year's cumulative inflation, so adding up each row's already-
+        // deflated totalGrowth doesn't telescope into (ending − starting −
+        // flow) the way it does for nominal dollars — deriving it instead
+        // keeps these three figures reconciling exactly in both
+        // perspectives, the way showing them side by side implies they do.
+        // Penalties leave the balance without being part of `flow`, so they
+        // go back in here — otherwise growth would silently absorb them.
+        totalGrowth += endingBalance - startingBalance - flow + penalties;
       }
 
       return {
@@ -117,6 +135,7 @@ export function usePortfolioProjection(perspective: Ref<'raw' | 'inflation-adjus
         totalFlow,
         totalGrowth,
         guaranteedIncome: guaranteedIncomeByStage.value[stage] ?? 0,
+        totalPenalties,
       };
     });
   });

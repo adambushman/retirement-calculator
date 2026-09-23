@@ -15,7 +15,9 @@ defineProps<{
   /** Accumulation is the only stage money flows *into* the accounts; every other stage is withdrawals, even if guaranteed income covers it and that comes to $0. */
   isAccumulation?: boolean,
   /** Average monthly guaranteed income (Social Security, pensions, annuities) during this stage; hidden when 0. */
-  avgMonthlyIncome?: number
+  avgMonthlyIncome?: number,
+  /** Early-withdrawal penalties paid during this stage; hidden when 0, since most stages never incur any. */
+  totalPenalties?: number
 }>();
 </script>
 
@@ -65,6 +67,11 @@ defineProps<{
   <div v-if="avgMonthlyIncome" class="text-center">
     <h2 class="text-sm lg:text-lg font-bold">{{ format("$,.2f")(avgMonthlyIncome) }}</h2>
     <p class="text-xs lg:text-sm text-gray-500">Guaranteed Income (Monthly Avg.)</p>
+  </div>
+
+  <div v-if="totalPenalties" class="text-center">
+    <h2 class="text-sm lg:text-lg font-bold text-amber-500">{{ format("$,.2f")(totalPenalties) }}</h2>
+    <p class="text-xs lg:text-sm text-gray-500">Penalties Applied</p>
   </div>
 </div>
 </template>

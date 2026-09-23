@@ -5,19 +5,6 @@ import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 
-export interface StageCoverage {
-  stage: string; // stage id
-  /**
-   * Sum of this stage's own Withdrawal Share (%) across every account.
-   * Accounts don't have to sum to 100 — coverage is purely informational,
-   * never enforced or normalized. Since an account's effective withdrawal
-   * start age is itself derived from this same share (see
-   * effectiveWithdrawalStartAge), the share value already *is* the
-   * eligibility signal — no separate "unlocked by this age" filter needed.
-   */
-  coveragePercent: number;
-}
-
 /**
  * Cross-account, portfolio-wide views that no single store can answer on its
  * own — see the "stores stay single-domain, composables handle cross-cutting
@@ -47,12 +34,5 @@ export function usePortfolioCoverage() {
     return Math.min(raw, assumptions.lifeExpectancy);
   });
 
-  const stageCoverage = computed<StageCoverage[]>(() =>
-    retirementPlan.stages.map((stage) => ({
-      stage: stage.id,
-      coveragePercent: Object.values(stage.withdrawalShareByAccount).reduce((sum, v) => sum + (v ?? 0), 0),
-    }))
-  );
-
-  return { accumulationEndAge, stageCoverage };
+  return { accumulationEndAge };
 }

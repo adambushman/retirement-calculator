@@ -52,6 +52,8 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
         At the moment, this calculator focuses on retirement accounts (i.e. 401K, IRA, etc) plus guaranteed income from social security, pensions, and annuities. It is not designed to account for other income during retirement years, such as part-time work or rental income.
         <br><br>
         Additionally, tax strategies are not considered. Contributions are considered before tax and income is assumed to be gross.
+        <br><br>
+        Early-withdrawal penalties <em>are</em> considered. Drawing from a Traditional or Roth account before age 59½ costs a 10% penalty on those withdrawals, charged on top of what you withdraw, so the stage still replaces the income you asked it to &mdash; the penalty comes out of the balance instead. Since this calculator works in whole years, age 59 is treated as fully penalized and age 60 as fully penalty-free. Roth accounts are tracked as one balance, so the rule allowing Roth contributions to be withdrawn penalty-free at any age isn't reflected.
       </template>
     </QuestionAnswer>
   </Accordion>

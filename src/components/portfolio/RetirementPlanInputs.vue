@@ -9,7 +9,7 @@ import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsSt
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { useAccountStore } from '@/stores/useAccountStore';
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/composeables/useAccountTypes';
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
 import { ACCUMULATION_LABEL, ACCUMULATION_COLOR, stageEndAge } from '@/composeables/useStages';
 
 // Unlike Context/Accounts, this section edits the real retirement-plan and
@@ -71,12 +71,25 @@ const portfolio = usePortfolioStore();
 const accountRows = computed(() =>
   portfolio.accounts.map((meta) => {
     const account = useAccountStore(meta.id);
+    const rules = ACCOUNT_TYPE_RULES[account.accountType];
+    // Flagged right where the age is set, since this table is where an
+    // early start age is actually chosen — the penalty it causes shows up
+    // much later, in whichever stage ends up doing the withdrawing.
+    const penaltyFreeAge = rules.penaltyFreeWithdrawalAge;
     return {
       id: meta.id,
       name: meta.name,
       typeLabel: ACCOUNT_TYPE_LABELS[account.accountType] ?? account.accountType,
       typeIcon: ACCOUNT_TYPE_ICONS[account.accountType],
       withdrawalStartAge: account.withdrawalStartAge,
+      early:
+        penaltyFreeAge !== null &&
+        Number.isFinite(account.withdrawalStartAge) &&
+        account.withdrawalStartAge < penaltyFreeAge,
+      penaltyNote:
+        penaltyFreeAge !== null && rules.earlyWithdrawalPenaltyRate !== null
+          ? `Starts before this account's penalty-free age of ${penaltyFreeAge} — withdrawals before then pay a ${rules.earlyWithdrawalPenaltyRate}% penalty.`
+          : undefined,
     };
   })
 );
@@ -137,8 +150,13 @@ const accountRows = computed(() =>
             <tbody>
               <tr class="border-t border-surface-100 dark:border-surface-800">
                 <td v-for="row in accountRows" :key="row.id" class="pt-1.5 px-3 text-center first:pl-0">
-                  <span v-if="Number.isFinite(row.withdrawalStartAge)" class="font-medium">
-                    {{ row.withdrawalStartAge }}
+                  <span
+                    v-if="Number.isFinite(row.withdrawalStartAge)"
+                    class="font-medium"
+                    :class="row.early && 'text-amber-500'"
+                    :title="row.early ? row.penaltyNote : undefined"
+                  >
+                    {{ row.withdrawalStartAge }}<template v-if="row.early">*</template>
                   </span>
                   <span v-else class="text-gray-400" title="Never withdraws — toggle it on in some stage">
                     &mdash;
@@ -147,6 +165,9 @@ const accountRows = computed(() =>
               </tr>
             </tbody>
           </table>
+          <p v-if="accountRows.some((r) => r.early)" class="text-xs text-amber-500 mt-2">
+            * Starts before this account's penalty-free age, so its withdrawals pay an early-withdrawal penalty.
+          </p>
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsSt
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
 import { resolveIncomeSource } from '@/composeables/useIncomeSources';
+import { ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
 
 const EMPTY_PROJECTION: FullProjection = { raw: [], 'inflation-adjusted': [] };
 
@@ -40,6 +41,7 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
   const projections = computed<Map<string, FullProjection>>(() => {
     const accounts = portfolio.accounts.map((meta) => {
       const store = useAccountStore(meta.id);
+      const rules = ACCOUNT_TYPE_RULES[store.accountType];
       return {
         id: meta.id,
         currentBalance: store.currentBalance,
@@ -48,6 +50,8 @@ export function usePortfolioSimulation(): PortfolioSimulationResult {
         firstMonthlyContribution: store.firstMonthlyContribution,
         contributionRaises: store.contributionRaises,
         withdrawalStartAge: store.withdrawalStartAge,
+        penaltyFreeWithdrawalAge: rules.penaltyFreeWithdrawalAge,
+        earlyWithdrawalPenaltyRate: rules.earlyWithdrawalPenaltyRate,
       };
     });
 

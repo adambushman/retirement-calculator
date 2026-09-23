@@ -33,6 +33,7 @@ const aggregateFor = (stage: string) =>
     totalFlow: 0,
     totalGrowth: 0,
     guaranteedIncome: 0,
+    totalPenalties: 0,
   };
 
 // Accumulation, followed by every user-defined stage in order — each stage's
@@ -78,6 +79,7 @@ const stages = computed(() => {
       :avgMonthlyFlow="perMonth(s.totalFlow, s.years[1]! - s.years[0]! + 1)"
       :totalGrowth="s.totalGrowth"
       :avgMonthlyIncome="perMonth(s.guaranteedIncome, s.years[1]! - s.years[0]! + 1)"
+      :totalPenalties="s.totalPenalties"
       :isAccumulation="s.stageId === ACCUMULATION_ID"
       :years="s.years"
     />

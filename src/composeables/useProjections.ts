@@ -4,8 +4,26 @@ export interface AnnualProjection {
   startBalance: number;
   endBalance: number;
   annualFlow: number;
+  /**
+   * Early-withdrawal penalty paid this year, as a positive number — money
+   * that leaves the account on top of `annualFlow` without replacing any
+   * income. Deliberately kept out of `annualFlow` so that anything asking
+   * "how much income did this actually replace?" (see useStageFunding.ts)
+   * doesn't count penalty dollars as income the account delivered.
+   */
+  penalty: number;
   totalGrowth: number;
 }
+
+/**
+ * The year's balance identity, with penalties in it:
+ *
+ *   endBalance = startBalance + annualFlow - penalty + totalGrowth
+ *
+ * Anything deriving one of these from the others (rather than summing a
+ * field row by row) has to carry the penalty term — see the note in
+ * usePortfolioProjection.ts on why growth is derived that way at all.
+ */
 
 export interface FullProjection {
   'raw': AnnualProjection[] | null;
@@ -29,6 +47,7 @@ export function applyInflationAdjustment(
       startBalance: p.startBalance / inflationFactor,
       endBalance: p.endBalance / inflationFactor,
       annualFlow: p.annualFlow / inflationFactor,
+      penalty: p.penalty / inflationFactor,
       totalGrowth: p.totalGrowth / inflationFactor,
     };
   });

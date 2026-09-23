@@ -12,7 +12,6 @@ import ConfirmModal from '@/components/ConfirmModal.vue';
 import ContextSummary from '@/components/portfolio/ContextSummary.vue';
 import PortfolioSummary from '@/components/portfolio/PortfolioSummary.vue';
 import RetirementPlanInputs from '@/components/portfolio/RetirementPlanInputs.vue';
-import PortfolioCoverageLegend from '@/components/portfolio/PortfolioCoverageLegend.vue';
 import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
@@ -291,7 +290,6 @@ function closeIncomeSourceModal(createdSourceId?: string) {
         <template #subtitle>The rest of your story — from today through every stage of retirement.</template>
       </BodySectionHeader>
       <template v-if="accountsDone">
-        <PortfolioCoverageLegend />
         <PortfolioResultsPanel />
       </template>
       <SectionPlaceholder

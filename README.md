@@ -165,7 +165,7 @@ This builds `dist/` and publishes it to the `gh-pages` branch of `origin`.
 ## Scope & limitations
 
 - Models **retirement accounts** (401k, IRA, brokerage) plus **guaranteed income** — Social Security, pensions, and annuities. Each pays for life from its own start age with an annual increase (COLA), and what it pays each year reduces what your accounts must cover. Other retirement-year income (part-time work, rental income) isn't modeled.
-- **No tax modeling** — contributions are treated as pre-tax and income as gross.
+- **No income tax modeling** — contributions are treated as pre-tax and income as gross. **Early-withdrawal penalties _are_ modeled**: a Traditional or Roth account drawn on before 59½ pays a 10% penalty on those withdrawals, charged on top of the withdrawal so the stage still replaces the income it targeted. Because ages are whole years, age 59 is penalized in full and age 60 isn't penalized at all. Roth balances are treated as a single pool, so the rule that Roth *contributions* can come out penalty-free at any age isn't modeled.
 - Growth is applied **annually**, after that year's contributions/withdrawals.
 - Years are treated as whole; each stage's withdrawal target is **indexed by inflation** every year of retirement.
 - A single inflation figure is applied uniformly across every stage.
