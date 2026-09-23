@@ -5,8 +5,8 @@ import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
-import { resolveIncomeSource, totalIncomeAtAge } from '@/composeables/useIncomeSources';
-import { retirementTargetAnnual, type PortfolioProjectionAssumptions } from '@/composeables/useAccountProjection';
+import { resolveIncomeSource } from '@/composeables/useIncomeSources';
+import { accountsTargetAnnual, type PortfolioProjectionAssumptions } from '@/composeables/useAccountProjection';
 import { stageEndAge, type Stage } from '@/composeables/useStages';
 
 // A stage's withdrawal shares always sum to exactly 100% of its target once
@@ -56,7 +56,7 @@ export function useStageFunding() {
    * income-offset) target and what its toggled-on accounts actually manage
    * to pay that year — or 0 if the target is fully met throughout. Nominal
    * dollars throughout (matching `raw`, not inflation-adjusted, rows), since
-   * the target itself is already a nominal figure — see retirementTargetAnnual.
+   * the target itself is already a nominal figure — see accountsTargetAnnual.
    */
   function monthlyShortfallFor(stage: Stage): number {
     const index = retirementPlan.stages.findIndex((s) => s.id === stage.id);
@@ -70,7 +70,8 @@ export function useStageFunding() {
       const rowIndex = age - ctx.ageToday;
       if (rowIndex < 0) continue;
 
-      const target = Math.max(0, retirementTargetAnnual(ctx, stage, age) - totalIncomeAtAge(ctx.incomeSources, age));
+      // Already net of the guaranteed income sources — see accountsTargetAnnual.
+      const target = accountsTargetAnnual(ctx, stage, age);
       if (target <= 0) continue;
 
       const actual = accountStores.value.reduce((sum, s) => {

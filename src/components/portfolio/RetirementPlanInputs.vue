@@ -8,8 +8,10 @@ import StageCard from '@/components/portfolio/StageCard.vue';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
+import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
 import { useAccountStore } from '@/stores/useAccountStore';
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
+import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_RULES } from '@/composeables/useAccountTypes';
+import { INCOME_SOURCE_TYPE_ICONS } from '@/composeables/useIncomeSourceTypes';
 import { ACCUMULATION_LABEL, ACCUMULATION_COLOR, stageEndAge } from '@/composeables/useStages';
 
 // Unlike Context/Accounts, this section edits the real retirement-plan and
@@ -62,12 +64,16 @@ const timelineSegments = computed(() => {
     .map((s) => ({ ...s, widthPercent: (s.years / total) * 100 }));
 });
 
-// Withdrawal Start Age isn't a setting at all — it's read-only, derived from
-// whichever stage first gives this account a nonzero Withdrawal Share (see
-// StageCard.vue and useStages.ts's effectiveWithdrawalStartAge) — shown here
-// purely for visibility, since it's otherwise not surfaced anywhere once a
-// plan has several stages.
+// When each piece of the plan starts paying, side by side: an account's own
+// withdrawal start age next to the age each guaranteed source begins. Neither
+// is a setting here. An account's is read-only, derived from whichever stage
+// first gives it a nonzero Withdrawal Share (see StageCard.vue and
+// useStages.ts's effectiveWithdrawalStartAge); a source's is set on the
+// source itself. Both are shown purely for visibility, since together they're
+// what decides which money is available when.
 const portfolio = usePortfolioStore();
+const incomeSources = useIncomeSourcesStore();
+
 const accountRows = computed(() =>
   portfolio.accounts.map((meta) => {
     const account = useAccountStore(meta.id);
@@ -79,9 +85,8 @@ const accountRows = computed(() =>
     return {
       id: meta.id,
       name: meta.name,
-      typeLabel: ACCOUNT_TYPE_LABELS[account.accountType] ?? account.accountType,
-      typeIcon: ACCOUNT_TYPE_ICONS[account.accountType],
-      withdrawalStartAge: account.withdrawalStartAge,
+      icon: ACCOUNT_TYPE_ICONS[account.accountType],
+      startAge: account.withdrawalStartAge,
       early:
         penaltyFreeAge !== null &&
         Number.isFinite(account.withdrawalStartAge) &&
@@ -90,9 +95,26 @@ const accountRows = computed(() =>
         penaltyFreeAge !== null && rules.earlyWithdrawalPenaltyRate !== null
           ? `Starts before this account's penalty-free age of ${penaltyFreeAge} — withdrawals before then pay a ${rules.earlyWithdrawalPenaltyRate}% penalty.`
           : undefined,
+      neverNote: 'Never withdraws — toggle it on in some stage',
     };
   })
 );
+
+// Guaranteed income never carries an early-withdrawal penalty (it isn't a
+// withdrawal), and always has a start age, so it never shows a dash.
+const incomeSourceRows = computed(() =>
+  incomeSources.sources.map((source) => ({
+    id: source.id,
+    name: source.name,
+    icon: INCOME_SOURCE_TYPE_ICONS[source.type],
+    startAge: source.startAge,
+    early: false,
+    penaltyNote: undefined,
+    neverNote: '',
+  }))
+);
+
+const startAgeRows = computed(() => [...accountRows.value, ...incomeSourceRows.value]);
 </script>
 
 <template>
@@ -133,15 +155,19 @@ const accountRows = computed(() =>
         </div>
       </div>
 
-      <div v-if="accountRows.length" class="min-w-0">
-        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Withdrawal Start Age</h4>
+      <div v-if="startAgeRows.length" class="min-w-0">
+        <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-1">When Income Starts</h4>
+        <p class="text-xs text-gray-400 mb-3">
+          The age each account starts being drawn on, and the age each guaranteed source starts
+          paying.
+        </p>
         <div class="overflow-x-auto">
           <table class="text-sm border-collapse">
             <thead>
               <tr>
-                <th v-for="row in accountRows" :key="row.id" class="pb-2 px-3 first:pl-0">
+                <th v-for="row in startAgeRows" :key="row.id" class="pb-2 px-3 first:pl-0">
                   <div class="flex flex-col items-center gap-1">
-                    <component :is="row.typeIcon" class="text-gray-400" style="width: 16px; height: 16px" />
+                    <component :is="row.icon" class="text-gray-400" style="width: 16px; height: 16px" />
                     <span class="font-medium truncate max-w-20" :title="row.name">{{ row.name }}</span>
                   </div>
                 </th>
@@ -149,23 +175,21 @@ const accountRows = computed(() =>
             </thead>
             <tbody>
               <tr class="border-t border-surface-100 dark:border-surface-800">
-                <td v-for="row in accountRows" :key="row.id" class="pt-1.5 px-3 text-center first:pl-0">
+                <td v-for="row in startAgeRows" :key="row.id" class="pt-1.5 px-3 text-center first:pl-0">
                   <span
-                    v-if="Number.isFinite(row.withdrawalStartAge)"
+                    v-if="Number.isFinite(row.startAge)"
                     class="font-medium"
                     :class="row.early && 'text-amber-500'"
                     :title="row.early ? row.penaltyNote : undefined"
                   >
-                    {{ row.withdrawalStartAge }}<template v-if="row.early">*</template>
+                    {{ row.startAge }}<template v-if="row.early">*</template>
                   </span>
-                  <span v-else class="text-gray-400" title="Never withdraws — toggle it on in some stage">
-                    &mdash;
-                  </span>
+                  <span v-else class="text-gray-400" :title="row.neverNote">&mdash;</span>
                 </td>
               </tr>
             </tbody>
           </table>
-          <p v-if="accountRows.some((r) => r.early)" class="text-xs text-amber-500 mt-2">
+          <p v-if="startAgeRows.some((r) => r.early)" class="text-xs text-amber-500 mt-2">
             * Starts before this account's penalty-free age, so its withdrawals pay an early-withdrawal penalty.
           </p>
         </div>

@@ -193,7 +193,35 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
     </div>
 
     <div v-if="!collapsed" class="space-y-6">
-      <AccountSectionHeader title="Assumptions" class="w-full mt-6">
+      <AccountSectionHeader title="Facts" class="w-full mt-6">
+        <p class="text-sm text-gray-400 mb-4">{{ rules?.taxDescription }}</p>
+        <div class="grid gap-10 sm:grid-cols-2">
+          <div>
+            <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Tax Treatment</h4>
+            <table class="w-full text-sm border-collapse">
+              <tbody>
+                <tr v-for="row in taxRows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
+                  <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
+                  <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Payment Rules</h4>
+            <table class="w-full text-sm border-collapse">
+              <tbody>
+                <tr v-for="row in paymentRuleRows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
+                  <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
+                  <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </AccountSectionHeader>
+
+      <AccountSectionHeader title="Assumptions" class="w-full">
         <div class="grid gap-10 sm:grid-cols-2">
           <div>
             <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Details</h4>
@@ -220,34 +248,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
                   :key="row.label"
                   class="border-b border-surface-100 dark:border-surface-800 last:border-0"
                 >
-                  <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
-                  <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </AccountSectionHeader>
-
-      <AccountSectionHeader title="Facts" class="w-full">
-        <p class="text-sm text-gray-400 mb-4">{{ rules?.taxDescription }}</p>
-        <div class="grid gap-10 sm:grid-cols-2">
-          <div>
-            <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Tax Treatment</h4>
-            <table class="w-full text-sm border-collapse">
-              <tbody>
-                <tr v-for="row in taxRows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
-                  <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
-                  <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-3">Payment Rules</h4>
-            <table class="w-full text-sm border-collapse">
-              <tbody>
-                <tr v-for="row in paymentRuleRows" :key="row.label" class="border-b border-surface-100 dark:border-surface-800 last:border-0">
                   <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
                   <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
                 </tr>

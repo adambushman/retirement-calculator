@@ -11,6 +11,11 @@ const age = format('.1~f');
 
 const name = defineModel<string>('name', { default: '' });
 
+// Hidden when the type was already chosen from the "+" menu — see
+// AccountFormModal.vue. Defaults to shown so the field is never silently
+// missing for a caller that doesn't set the type at all.
+withDefaults(defineProps<{ showTypePicker?: boolean }>(), { showTypePicker: true });
+
 const store = inject(AccountStoreKey)!;
 
 const accountTypes: Array<{ value: AccountType; label: string; description: string }> = [
@@ -31,7 +36,7 @@ const naiveWithdrawalAgePercent = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <div>
+    <div v-if="showTypePicker">
       <label class="block text-sm mb-2 text-gray-400">Account Type</label>
       <div class="grid gap-2 sm:grid-cols-3">
         <label

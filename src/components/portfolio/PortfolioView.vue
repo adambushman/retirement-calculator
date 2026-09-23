@@ -15,17 +15,20 @@ import RetirementPlanInputs from '@/components/portfolio/RetirementPlanInputs.vu
 import PortfolioResultsPanel from '@/components/portfolio/PortfolioResultsPanel.vue';
 import AccountCard from '@/components/portfolio/AccountCard.vue';
 import AccountFormModal from '@/components/portfolio/AccountFormModal.vue';
-import AddAccountMenu from '@/components/portfolio/AddAccountMenu.vue';
+import AddAccountMenu, { type AddSelection } from '@/components/portfolio/AddAccountMenu.vue';
 import IncomeSourceCard from '@/components/portfolio/IncomeSourceCard.vue';
 import IncomeSourceFormModal from '@/components/portfolio/IncomeSourceFormModal.vue';
 import PortfolioAssumptionsModal from '@/components/portfolio/PortfolioAssumptionsModal.vue';
 import StageFormModal from '@/components/portfolio/StageFormModal.vue';
 
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
+import { useAccountStore } from '@/stores/useAccountStore';
 import { usePortfolioAssumptionsStore } from '@/stores/usePortfolioAssumptionsStore';
 import { useRetirementPlanStore } from '@/stores/useRetirementPlanStore';
 import { useIncomeSourcesStore } from '@/stores/useIncomeSourcesStore';
 import type { IncomeSourceType } from '@/composeables/useIncomeSources';
+import type { AccountType } from '@/stores/useAccountStore';
+import { ACCOUNT_GROUP_LABELS, isRetirementAccountType } from '@/composeables/useAccountTypes';
 
 const portfolio = usePortfolioStore();
 const assumptions = usePortfolioAssumptionsStore();
@@ -81,15 +84,30 @@ function setExpanded(id: string, expanded: boolean) {
   else expandedIds.delete(id);
 }
 
+// Accounts are grouped under the same headings the "+" menu offers them
+// under, so what you picked from is what you find them filed beneath. An
+// empty group drops out rather than showing a bare heading.
+const accountGroups = computed(() => {
+  const withType = portfolio.accounts.map((a) => ({ ...a, type: useAccountStore(a.id).accountType }));
+  return [
+    { label: ACCOUNT_GROUP_LABELS.retirement, accounts: withType.filter((a) => isRetirementAccountType(a.type)) },
+    { label: ACCOUNT_GROUP_LABELS.taxable, accounts: withType.filter((a) => !isRetirementAccountType(a.type)) },
+  ].filter((group) => group.accounts.length > 0);
+});
+
 // The single shared Add/Edit modal. `editingAccountId` is set to edit an
 // existing account and left null to create a new one; either way the modal
 // only touches the portfolio/account stores once its own Done is clicked.
 const showAccountModal = ref(false);
 const editingAccountId = ref<string | null>(null);
+// The type picked from the "+" menu, or null when the form was opened
+// without one (the empty-state button) and should ask for it itself.
+const newAccountType = ref<AccountType | null>(null);
 
-function addAccount() {
+function addAccount(type: AccountType | null = null) {
   if (!assumptions.isDescribed) return;
   editingAccountId.value = null;
+  newAccountType.value = type;
   showAccountModal.value = true;
 }
 
@@ -111,13 +129,13 @@ const showIncomeSourceModal = ref(false);
 const editingIncomeSourceId = ref<string | null>(null);
 const newIncomeSourceType = ref<IncomeSourceType>('social-security');
 
-function onAddSelect(kind: 'account' | IncomeSourceType) {
-  if (kind === 'account') {
-    addAccount();
+function onAddSelect(selection: AddSelection) {
+  if (selection.kind === 'account') {
+    addAccount(selection.type);
     return;
   }
   editingIncomeSourceId.value = null;
-  newIncomeSourceType.value = kind;
+  newIncomeSourceType.value = selection.type;
   showIncomeSourceModal.value = true;
 }
 
@@ -190,15 +208,20 @@ function closeIncomeSourceModal(createdSourceId?: string) {
       </div>
 
       <div v-if="accountsDone" class="space-y-4">
-        <AccountCard
-          v-for="account in portfolio.accounts"
-          :key="account.id"
-          :accountId="account.id"
-          :name="account.name"
-          :collapsed="!expandedIds.has(account.id)"
-          @update:collapsed="setExpanded(account.id, !$event)"
-          @edit="editAccount"
-        />
+        <template v-for="group in accountGroups" :key="group.label">
+          <h4 class="font-semibold text-surface-500 dark:text-surface-400 pt-4 first:pt-0">
+            {{ group.label }}
+          </h4>
+          <AccountCard
+            v-for="account in group.accounts"
+            :key="account.id"
+            :accountId="account.id"
+            :name="account.name"
+            :collapsed="!expandedIds.has(account.id)"
+            @update:collapsed="setExpanded(account.id, !$event)"
+            @edit="editAccount"
+          />
+        </template>
 
         <template v-if="incomeSources.sources.length">
           <h4 class="font-semibold text-surface-500 dark:text-surface-400 pt-4">Guaranteed Income</h4>
@@ -220,7 +243,7 @@ function closeIncomeSourceModal(createdSourceId?: string) {
           ? 'Add a retirement account to start building your portfolio.'
           : 'Complete Step 1 first.'"
         :active="contextDone"
-        button-label="Add Retirement Account"
+        button-label="Add Account"
         @action="addAccount"
       >
         <template #icon>
@@ -306,6 +329,7 @@ function closeIncomeSourceModal(createdSourceId?: string) {
     <AccountFormModal
       v-if="showAccountModal"
       :accountId="editingAccountId ?? undefined"
+      :accountType="newAccountType ?? undefined"
       @close="closeAccountModal"
     />
 

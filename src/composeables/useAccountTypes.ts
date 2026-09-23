@@ -71,6 +71,24 @@ export const ACCOUNT_TYPE_RULES: Record<AccountType, AccountTypeRules> = {
   },
 };
 
+/**
+ * Whether this type is a retirement account rather than a taxable one.
+ *
+ * Derived from the rules instead of a separate hand-kept list: a retirement
+ * account is exactly one with a penalty-free withdrawal age, and a taxable
+ * brokerage account has none. A new account type therefore files itself into
+ * the right group by virtue of its own rules.
+ */
+export function isRetirementAccountType(type: AccountType): boolean {
+  return ACCOUNT_TYPE_RULES[type].penaltyFreeWithdrawalAge !== null;
+}
+
+/** Group headings for accounts, shared by the "+" menu and the Accounts section. */
+export const ACCOUNT_GROUP_LABELS = {
+  retirement: 'Retirement Accounts',
+  taxable: 'Taxable Accounts',
+} as const;
+
 // A distinct icon per account type so it reads at a glance next to the name
 // (e.g. in the Portfolio breakdown's column headers): a landmark for
 // pre-tax/employer-style Traditional accounts, a sprout for Roth's tax-free

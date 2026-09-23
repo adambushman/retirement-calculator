@@ -316,9 +316,13 @@ const textFieldClass =
             </div>
 
             <div>
-              <label class="block text-sm mb-2 text-gray-400" :for="`stage-rate-${stage.id}`">
+              <label class="block text-sm mb-1 text-gray-400" :for="`stage-rate-${stage.id}`">
                 Income Replacement Rate
               </label>
+              <p class="text-xs text-gray-400 mb-2">
+                The share of your career income this stage lives on. Guaranteed income counts
+                toward it first — your accounts fund what's left.
+              </p>
               <InputNumber
                 v-model.number="stage.incomeReplacementRate"
                 @input="$event.value !== null && (stage.incomeReplacementRate = $event.value)"

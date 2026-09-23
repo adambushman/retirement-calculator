@@ -4,18 +4,25 @@ import { ref, computed, provide, onBeforeUnmount } from 'vue';
 import Dialog from '@/volt/Dialog.vue';
 import Button from '@/volt/Button.vue';
 import SecondaryButton from '@/volt/SecondaryButton.vue';
-import CheckIcon from '@primevue/icons/check';
 import StepAccountDetails from '@/components/portfolio/wizard/StepAccountDetails.vue';
 import StepEarningSaving from '@/components/portfolio/wizard/StepEarningSaving.vue';
 
-import { useAccountStore, useDraftAccountStore, copyAccountFields } from '@/stores/useAccountStore';
+import { useAccountStore, useDraftAccountStore, copyAccountFields, type AccountType } from '@/stores/useAccountStore';
 import { usePortfolioStore } from '@/stores/usePortfolioStore';
 import { AccountStoreKey } from '@/stores/accountStoreKey';
+import { ACCOUNT_TYPE_LABELS } from '@/composeables/useAccountTypes';
 
 // Omit accountId to create a brand-new account: nothing is added to the
 // portfolio until Done is clicked. Pass an existing id to edit it in place.
+//
+// `accountType` presets the type for a new account, since it's now picked
+// from the "+" menu rather than inside the form (see AddAccountMenu.vue).
+// It's optional because the empty-state "Add Account" button opens the form
+// without going through that menu — and in that case the form still has to
+// offer the choice itself.
 const props = defineProps<{
   accountId?: string;
+  accountType?: AccountType;
 }>();
 
 const emit = defineEmits<{
@@ -38,7 +45,16 @@ const draftName = ref(
 
 if (props.accountId) {
   copyAccountFields(useAccountStore(props.accountId), draft);
+} else if (props.accountType) {
+  draft.accountType = props.accountType;
 }
+
+// The type picker only appears when the type isn't already settled: editing
+// an existing account (so a mis-chosen type stays fixable) or creating one
+// without having picked from the menu. Showing it on a brand-new account
+// that was just started as, say, a Roth would only ask the same question
+// twice.
+const showTypePicker = !props.accountType || !isNew;
 
 provide(AccountStoreKey, draft);
 
@@ -48,30 +64,17 @@ onBeforeUnmount(() => draft.$dispose());
 // used to be a third "Retirement Plan" step here, but those now live (and
 // are edited) in the portfolio-wide Retirement Plan section instead — see
 // RetirementPlanInputs.vue's "Per-Account Withdrawal Settings".
-const steps = ['Account Details', 'Earning & Saving'];
-
-const currentStep = ref(0);
-// Linear stepper: steps up to here have been visited and can be revisited,
-// but nothing beyond the current step can be jumped to.
-const furthestStep = ref(0);
-
-const modalTitle = computed(() =>
-  isNew ? 'Add New Retirement Account' : `Edit ${draftName.value || 'Untitled'} Account`
-);
-
-function goTo(index: number) {
-  if (index <= furthestStep.value) currentStep.value = index;
-}
-
-function next() {
-  if (currentStep.value >= steps.length - 1) return;
-  currentStep.value += 1;
-  furthestStep.value = Math.max(furthestStep.value, currentStep.value);
-}
-
-function back() {
-  if (currentStep.value > 0) currentStep.value -= 1;
-}
+//
+// Account Details and Earning & Saving used to be two wizard steps. With the
+// type chosen up front in the "+" menu, what's left fits on one screen, and
+// a single form matches how a guaranteed income source is added (see
+// IncomeSourceFormModal.vue).
+const modalTitle = computed(() => {
+  // Just the name: appending "Account" reads badly against the default
+  // names, which already contain the word ("Edit Account 1 Account").
+  if (!isNew) return `Edit ${draftName.value || 'Untitled Account'}`;
+  return props.accountType ? `Add ${ACCOUNT_TYPE_LABELS[props.accountType]} Account` : 'Add New Account';
+});
 
 function cancel() {
   emit('close');
@@ -100,49 +103,18 @@ function done() {
 <template>
   <Dialog :visible="true" @update:visible="cancel" modal dismissable-mask class="max-w-2xl w-full">
     <template #header>
-      <div>
-        <div class="font-bold text-xl">{{ modalTitle }}</div>
-        <div class="text-sm font-normal text-gray-400 mt-0.5">{{ steps[currentStep] }}</div>
-      </div>
+      <div class="font-bold text-xl">{{ modalTitle }}</div>
     </template>
 
-    <div class="flex items-center mb-6">
-      <template v-for="(step, i) in steps" :key="step">
-        <button
-          type="button"
-          :disabled="i > furthestStep"
-          @click="goTo(i)"
-          class="flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium shrink-0 transition-colors
-            disabled:cursor-not-allowed"
-          :class="i === currentStep
-            ? 'bg-primary text-primary-contrast'
-            : i < furthestStep
-              ? 'bg-primary-100 dark:bg-primary/20 text-primary'
-              : 'bg-surface-100 dark:bg-surface-800 text-gray-400'"
-          :aria-label="`Go to step ${i + 1}: ${step}`"
-          :aria-current="i === currentStep ? 'step' : undefined"
-        >
-          <CheckIcon v-if="i < furthestStep" style="width: 12px; height: 12px" />
-          <template v-else>{{ i + 1 }}</template>
-        </button>
-        <div
-          v-if="i < steps.length - 1"
-          class="flex-1 h-px mx-1"
-          :class="i < furthestStep ? 'bg-primary-200 dark:bg-primary/30' : 'bg-surface-200 dark:bg-surface-700'"
-        />
-      </template>
+    <div class="space-y-8">
+      <StepAccountDetails v-model:name="draftName" :showTypePicker="showTypePicker" />
+      <StepEarningSaving />
     </div>
-
-    <StepAccountDetails v-if="currentStep === 0" v-model:name="draftName" />
-    <StepEarningSaving v-else />
 
     <template #footer>
       <div class="flex justify-between w-full">
-        <SecondaryButton v-if="currentStep === 0" @click="cancel">Cancel</SecondaryButton>
-        <SecondaryButton v-else @click="back">Back</SecondaryButton>
-
-        <Button v-if="currentStep < steps.length - 1" @click="next">Next</Button>
-        <Button v-else @click="done">Done</Button>
+        <SecondaryButton @click="cancel">Cancel</SecondaryButton>
+        <Button @click="done">Done</Button>
       </div>
     </template>
   </Dialog>

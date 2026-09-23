@@ -84,18 +84,14 @@ export interface PortfolioProjectionAssumptions {
 }
 
 /**
- * The nominal dollars a stage aims to replace in the year starting at `age`:
- * the stage's income-replacement rate applied to the household's income in
- * its last working year, then indexed by inflation for every year since the
- * first stage began — retirement spending is meant to hold its purchasing
- * power, so a target that stayed flat in nominal dollars would quietly
- * shrink in real terms (and fall behind any income source with a COLA).
+ * The household's career income restated for the year starting at `age`:
+ * what it had grown to by the last working year, then indexed by inflation
+ * for every year since the first stage began — retirement spending is meant
+ * to hold its purchasing power, so a figure that stayed flat in nominal
+ * dollars would quietly shrink in real terms (and fall behind any income
+ * source with a COLA).
  */
-export function retirementTargetAnnual(
-  assumptions: PortfolioProjectionAssumptions,
-  stage: Stage,
-  age: number
-): number {
+function careerIncomeAtAge(assumptions: PortfolioProjectionAssumptions, age: number): number {
   const yearsUntilFirstStage = assumptions.firstStageStartAge - assumptions.ageToday;
   // Income in the last accumulation year: compound the annual raise once per
   // completed working year (year 1 is worked at today's salary, no raise
@@ -105,9 +101,38 @@ export function retirementTargetAnnual(
     assumptions.annualIncome * Math.pow(1 + assumptions.annualRaises / 100, Math.max(0, yearsUntilFirstStage - 1));
 
   const yearsIntoRetirement = Math.max(0, age - assumptions.firstStageStartAge);
-  const inflationIndex = Math.pow(1 + assumptions.annualInflation / 100, yearsIntoRetirement);
+  return annualIncomeAtFirstStage * Math.pow(1 + assumptions.annualInflation / 100, yearsIntoRetirement);
+}
 
-  return annualIncomeAtFirstStage * (stage.incomeReplacementRate / 100) * inflationIndex;
+/**
+ * The nominal dollars a stage needs its ACCOUNTS to replace in the year
+ * starting at `age`:
+ *
+ *   (career income × rate) − guaranteed income
+ *
+ * The rate is taken against the whole career income, and the guaranteed
+ * income sources then count toward that target — so the rate keeps meaning
+ * "the share of my working income I want to live on", and the accounts fund
+ * whatever Social Security, a pension or an annuity doesn't. Applying the
+ * rate to the income NET of those sources instead would quietly break that
+ * reading: at a 80% rate against a $30k floor, the household would end up
+ * living on 86% of its career income rather than the 80% it asked for.
+ *
+ * Guaranteed income is netted out HERE rather than by each caller, so the
+ * simulation and useStageFunding.ts can't drift apart on what a stage is
+ * actually asking its accounts for.
+ */
+export function accountsTargetAnnual(
+  assumptions: PortfolioProjectionAssumptions,
+  stage: Stage,
+  age: number
+): number {
+  const target = careerIncomeAtAge(assumptions, age) * (stage.incomeReplacementRate / 100);
+
+  // Never below zero: guaranteed income beyond what the stage targets simply
+  // leaves the accounts nothing to replace, rather than becoming a negative
+  // need (the surplus goes unspent).
+  return Math.max(0, target - totalIncomeAtAge(assumptions.incomeSources, age));
 }
 
 interface AccountState {
@@ -247,19 +272,14 @@ export function computePortfolioSimulation(
 
     // What each withdrawing account actually draws this year, already
     // accounting for any sibling that can't cover its own share in full.
-    // What the accounts must cover is the stage's target less whatever the
-    // income sources already pay this year (never below zero — a surplus
-    // just goes unspent).
+    // The target already nets out the guaranteed income sources — see
+    // accountsTargetAnnual.
     const draws =
       withdrawing.length > 0 && currentStage
         ? allocateWithdrawals(
             withdrawing,
             currentStage,
-            Math.max(
-              0,
-              retirementTargetAnnual(assumptions, currentStage, age) -
-                totalIncomeAtAge(assumptions.incomeSources, age)
-            ),
+            accountsTargetAnnual(assumptions, currentStage, age),
             age
           )
         : new Map<string, number>();
