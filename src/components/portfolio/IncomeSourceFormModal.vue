@@ -15,6 +15,7 @@ import {
   INCOME_SOURCE_TYPE_RULES,
   defaultIncomeSource,
 } from '@/composeables/useIncomeSourceTypes';
+import { FULL_RETIREMENT_AGE, claimingFactorAt } from '@/composeables/useSocialSecurity';
 
 // Pass `sourceId` to edit an existing source in place, or `type` to create a
 // new one. Either way every edit happens against a local draft and only
@@ -58,11 +59,18 @@ const startAgeMax = computed(() =>
 );
 
 const dollars = format('$,.0f');
+const percent = format('.1~f');
 
 // A preview so the figure the engine will actually use is never a surprise:
 // the first year's payment, and (for an annuity) the balance it comes from.
 const firstMonthlyPayment = computed(() => firstAnnualIncome({ ...draft, id: '' }, assumptions) / 12);
 const balanceAtStart = computed(() => annuityBalanceAtStart({ ...draft, id: '' }, assumptions));
+
+// Social Security only: how the chosen claiming age adjusts the PIA — shown
+// alongside the age field so moving it is never a mystery jump in the
+// preview below.
+const claimingPercent = computed(() => claimingFactorAt(draft.startAge));
+const isEarlyClaim = computed(() => draft.startAge < FULL_RETIREMENT_AGE);
 
 const textFieldClass =
   'rounded-md border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 ' +
@@ -106,7 +114,20 @@ function done() {
       </div>
 
       <div class="flex flex-wrap gap-3">
-        <div v-if="!rules.hasBalance">
+        <div v-if="draft.type === 'social-security'">
+          <label class="block text-sm mb-2 text-gray-400" for="income-source-pia-input">
+            Primary Insurance Amount (at age {{ FULL_RETIREMENT_AGE }})
+          </label>
+          <InputNumber
+            v-model.number="draft.primaryInsuranceAmount"
+            inputId="income-source-pia-input"
+            size="small"
+            prefix="$"
+            :min="0"
+          />
+        </div>
+
+        <div v-else-if="!rules.hasBalance">
           <label class="block text-sm mb-2 text-gray-400" for="income-source-benefit-input">
             Monthly Benefit (Today's Dollars)
           </label>
@@ -210,11 +231,22 @@ function done() {
         <p v-if="rules.hasBalance">
           Balance at age {{ draft.startAge }}: <span class="font-medium text-surface-700 dark:text-surface-0">{{ dollars(balanceAtStart) }}</span>
         </p>
+        <p v-if="draft.type === 'social-security'">
+          Claiming at age {{ draft.startAge }} pays
+          <span class="font-medium text-surface-700 dark:text-surface-0">{{ percent(claimingPercent) }}%</span>
+          of your PIA — {{ isEarlyClaim ? 'reduced for claiming before' : draft.startAge === FULL_RETIREMENT_AGE ? 'neither reduced nor increased at' : 'increased for claiming after' }}
+          Full Retirement Age ({{ FULL_RETIREMENT_AGE }}).
+        </p>
         <p>
           First year of payments: <span class="font-medium text-surface-700 dark:text-surface-0">≈ {{ dollars(firstMonthlyPayment) }}/mo</span>
           (in the dollars of that year, before any inflation adjustment).
         </p>
-        <p v-if="!rules.hasBalance" class="text-xs">
+        <p v-if="draft.type === 'social-security'" class="text-xs">
+          Enter your Primary Insurance Amount as your Social Security statement shows it, in today's
+          dollars — it's carried forward with inflation to the age payments begin, then adjusted for
+          claiming at that age instead of {{ FULL_RETIREMENT_AGE }}.
+        </p>
+        <p v-else-if="!rules.hasBalance" class="text-xs">
           Enter the monthly benefit as your statement shows it, in today's dollars — it's carried forward with
           inflation to the age payments begin.
         </p>

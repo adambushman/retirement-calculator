@@ -15,6 +15,7 @@ import {
   INCOME_SOURCE_TYPE_ICONS,
   INCOME_SOURCE_TYPE_RULES,
 } from '@/composeables/useIncomeSourceTypes';
+import { FULL_RETIREMENT_AGE, CLAIMING_AGE_TABLE, claimingFactorAt } from '@/composeables/useSocialSecurity';
 
 const props = defineProps<{
   sourceId: string;
@@ -81,6 +82,11 @@ const paymentRows = computed(() => {
       { label: 'Growth Rate (Before Payments)', value: `${percent(s.growthRate)}%` },
       { label: 'Annual Payout Rate', value: `${percent(s.payoutRate)}%` }
     );
+  } else if (s.type === 'social-security') {
+    rows.push(
+      { label: `Primary Insurance Amount (at ${FULL_RETIREMENT_AGE})`, value: `${dollars(s.primaryInsuranceAmount)}/mo` },
+      { label: 'Claiming Age Adjustment', value: `${percent(claimingFactorAt(s.startAge))}% of PIA` }
+    );
   } else {
     rows.push({ label: "Monthly Benefit (Today's Dollars)", value: `${dollars(s.monthlyBenefit)}/mo` });
   }
@@ -89,6 +95,21 @@ const paymentRows = computed(() => {
     { label: 'Annual Increase (COLA)', value: `${percent(s.cola)}%` }
   );
   return rows;
+});
+
+// The SSA's own reference table, for a quick "where does my claiming age
+// land" glance — social-security only. The exact figure (including for a
+// fractional age, which this form allows in half-year steps) is already the
+// "Claiming Age Adjustment" row above; this is a visual anchor, so the
+// nearest whole-year column is highlighted rather than requiring an exact
+// match. 67 carries its own "FRA" label regardless of which column is
+// highlighted, since it's the fixed reference every other column is stated
+// relative to, not just whichever age this source happens to be set to.
+const claimingTable = computed(() => {
+  const s = source.value;
+  if (!s || s.type !== 'social-security') return [];
+  const nearestAge = Math.round(s.startAge);
+  return CLAIMING_AGE_TABLE.map((row) => ({ ...row, current: row.age === nearestAge }));
 });
 
 const taxRows = computed(() => [{ label: 'Payments Taxed', value: rules.value?.paymentTaxTreatment ?? '' }]);
@@ -250,6 +271,48 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
                 >
                   <td class="py-1.5 pr-2 text-gray-400 align-top">{{ row.label }}</td>
                   <td class="py-1.5 font-medium text-right">{{ row.value }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="claimingTable.length" class="mt-8 min-w-0">
+          <h4 class="font-semibold text-surface-500 dark:text-surface-400 mb-1">Claiming Age & Benefit</h4>
+          <p class="text-xs text-gray-400 mb-3">
+            Social Security's own reduction/credit schedule — claiming before Full Retirement Age
+            permanently lowers the benefit, claiming after raises it, up to age
+            {{ CLAIMING_AGE_TABLE[CLAIMING_AGE_TABLE.length - 1]!.age }}.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th
+                    v-for="row in claimingTable"
+                    :key="row.age"
+                    class="pb-1 px-3 text-center first:pl-0"
+                    :class="row.current && 'text-primary'"
+                  >
+                    {{ row.age }}
+                  </th>
+                </tr>
+                <tr>
+                  <th v-for="row in claimingTable" :key="row.age" class="pb-2 px-3 text-center first:pl-0 font-normal text-gray-400">
+                    <span v-if="row.age === FULL_RETIREMENT_AGE">FRA</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t border-surface-100 dark:border-surface-800">
+                  <td
+                    v-for="row in claimingTable"
+                    :key="row.age"
+                    class="pt-1.5 px-3 text-center first:pl-0 rounded"
+                    :class="row.current ? 'font-semibold text-primary bg-primary-50 dark:bg-primary/10' : 'font-medium'"
+                  >
+                    {{ percent(row.percentOfPia) }}%
+                  </td>
                 </tr>
               </tbody>
             </table>

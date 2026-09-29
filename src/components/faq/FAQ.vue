@@ -54,6 +54,8 @@ import QuestionAnswer from '@/components/faq/QuestionAnswer.vue';
         Additionally, tax strategies are not considered. Contributions are considered before tax and income is assumed to be gross.
         <br><br>
         Early-withdrawal penalties <em>are</em> considered. Drawing from a Traditional or Roth account before age 59½ costs a 10% penalty on those withdrawals, charged on top of what you withdraw, so the stage still replaces the income you asked it to &mdash; the penalty comes out of the balance instead. Since this calculator works in whole years, age 59 is treated as fully penalized and age 60 as fully penalty-free. Roth accounts are tracked as one balance, so the rule allowing Roth contributions to be withdrawn penalty-free at any age isn't reflected.
+        <br><br>
+        Social Security's claiming age <em>is</em> considered. You enter your Primary Insurance Amount (PIA) — your benefit at Full Retirement Age, 67 — and claiming earlier (as early as 62) or later (as late as 70) reduces or increases it using the same month-by-month formula the SSA itself uses. A pension doesn't get this treatment yet: it's still a flat monthly benefit at whatever age you set, since pensions vary too much plan to plan to model generally.
       </template>
     </QuestionAnswer>
   </Accordion>

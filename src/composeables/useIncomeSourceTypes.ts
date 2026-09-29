@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 
 import type { IncomeSource, IncomeSourceType } from '@/composeables/useIncomeSources';
+import { FULL_RETIREMENT_AGE, CLAIMING_AGE_MIN, CLAIMING_AGE_MAX } from '@/composeables/useSocialSecurity';
 import SocialSecurityIcon from '@/components/icons/SocialSecurityIcon.vue';
 import PensionIcon from '@/components/icons/PensionIcon.vue';
 import AnnuityIcon from '@/components/icons/AnnuityIcon.vue';
@@ -39,11 +40,14 @@ export interface IncomeSourceTypeRules {
 export const INCOME_SOURCE_TYPE_RULES: Record<IncomeSourceType, IncomeSourceTypeRules> = {
   'social-security': {
     taxDescription:
-      'Social Security benefits are based on your lifetime earnings record and paid monthly for life. Depending on your total income, up to 85% of your benefit can be taxed as ordinary income.',
+      `Social Security benefits are based on your Primary Insurance Amount (PIA) — your benefit at ` +
+      `Full Retirement Age (${FULL_RETIREMENT_AGE}) — and paid monthly for life. Claiming before ` +
+      `${FULL_RETIREMENT_AGE} permanently reduces it; claiming after, up to age ${CLAIMING_AGE_MAX}, ` +
+      `increases it. Depending on your total income, up to 85% of your benefit can be taxed as ordinary income.`,
     paymentTaxTreatment: 'Partly taxed as ordinary income',
     paymentDuration: 'For life',
-    startAgeMin: 62,
-    startAgeMax: 70,
+    startAgeMin: CLAIMING_AGE_MIN,
+    startAgeMax: CLAIMING_AGE_MAX,
     hasBalance: false,
   },
   pension: {
@@ -86,7 +90,12 @@ export function defaultIncomeSource(
     name: `${INCOME_SOURCE_TYPE_LABELS[type]} ${existingOfType + 1}`,
     ownerName: '',
     startAge: Math.min(Math.max(preferredStartAge, min), Math.max(min, max)),
-    monthlyBenefit: type === 'social-security' ? 2000 : 1500,
+    // Ignored outside its own type, same as the annuity-only fields below —
+    // a plausible starting value either way rather than a placeholder zero.
+    monthlyBenefit: 1500,
+    // ~$2,800/mo approximates a full (Full-Retirement-Age) benefit today;
+    // ignored for pension/annuity.
+    primaryInsuranceAmount: 2800,
     cola: type === 'social-security' ? ctx.annualInflation : 0,
     currentBalance: 100000,
     monthlyContribution: 0,

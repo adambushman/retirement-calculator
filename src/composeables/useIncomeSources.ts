@@ -1,4 +1,5 @@
 import { naiveAccumulate } from '@/composeables/useNaiveAccountProjection';
+import { claimingFactorAt } from '@/composeables/useSocialSecurity';
 
 // Income sources (Social Security, pensions, annuities) are deliberately NOT
 // accounts: they have no balance the user draws down, so they don't take a
@@ -10,9 +11,16 @@ import { naiveAccumulate } from '@/composeables/useNaiveAccountProjection';
 // Only an annuity has a real balance, and only until it starts paying: it
 // accumulates like a small account (starting balance + flat monthly
 // contributions + growth) and its first payment is that balance times its
-// payout rate. Social Security and pensions are just "a monthly benefit
-// starting at an age" — the user already knows the benefit from their
-// statement, so there's nothing to accumulate.
+// payout rate. A pension is just "a monthly benefit starting at an age" —
+// the user already knows the benefit from their statement, so there's
+// nothing to accumulate.
+//
+// Social Security is the one exception with real math of its own: what it
+// pays depends on the claiming age, not just on the benefit itself — see
+// useSocialSecurity.ts. The user provides their Primary Insurance Amount
+// (PIA, their benefit at Full Retirement Age) rather than a monthly benefit
+// already restated for whatever age they start at, and this file applies
+// the SSA's own claiming-age adjustment to get there.
 //
 // Everything here is pure (no stores), like useNaiveAccountProjection.ts.
 
@@ -26,12 +34,19 @@ export interface IncomeSource {
   /** Age payments begin. */
   startAge: number;
   /**
-   * Monthly benefit in TODAY's dollars, as a benefit statement quotes it
-   * (social-security and pension only — an annuity's benefit is derived
-   * from its balance instead). Restated at startAge using the inflation
-   * assumption; see firstAnnualIncome.
+   * Monthly benefit in TODAY's dollars, as a benefit statement quotes it.
+   * Pension only — Social Security uses primaryInsuranceAmount instead, and
+   * an annuity's benefit is derived from its balance. Restated at startAge
+   * using the inflation assumption; see firstAnnualIncome.
    */
   monthlyBenefit: number;
+  /**
+   * Social Security only: the worker's Primary Insurance Amount, in TODAY's
+   * dollars, as a Social Security statement quotes it — the monthly benefit
+   * at Full Retirement Age (see useSocialSecurity.ts), before whatever
+   * adjustment claiming at startAge instead actually applies.
+   */
+  primaryInsuranceAmount: number;
   /** Annual increase (COLA) applied to payments after they begin, in percent. */
   cola: number;
 
@@ -76,15 +91,28 @@ export function annuityBalanceAtStart(source: IncomeSource, ctx: IncomeContext):
 
 /**
  * Nominal dollars per year in the first year of payments. A benefit quoted
- * in today's dollars (social-security, pension) is inflated forward to the
+ * in today's dollars (Social Security, pension) is inflated forward to the
  * start age; an annuity's is its accumulated balance times its payout rate,
  * which is already nominal.
+ *
+ * Social Security additionally applies the SSA's own claiming-age
+ * adjustment to the (inflated) PIA — claiming before Full Retirement Age
+ * permanently reduces it, claiming after increases it, up to age 70. The
+ * two adjustments commute (multiplication), so it doesn't matter that
+ * inflation is applied to a today's-dollars PIA before the claiming-age
+ * percent, itself independent of inflation, is applied on top.
  */
 export function firstAnnualIncome(source: IncomeSource, ctx: IncomeContext): number {
   if (source.type === 'annuity') {
     return (annuityBalanceAtStart(source, ctx) * source.payoutRate) / 100;
   }
+
   const inflationToStart = Math.pow(1 + ctx.annualInflation / 100, yearsUntilStart(source, ctx));
+
+  if (source.type === 'social-security') {
+    return source.primaryInsuranceAmount * 12 * inflationToStart * (claimingFactorAt(source.startAge) / 100);
+  }
+
   return source.monthlyBenefit * 12 * inflationToStart;
 }
 
